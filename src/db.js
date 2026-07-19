@@ -588,45 +588,30 @@ export const db = {
   _syncTriggered: false,
 
   async syncFromSupabase() {
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
-
     try {
-      console.log("[Supabase Sync] Starting parallel sync down from cloud database...");
+      console.log("[Local API Sync] Starting sync down from VPS database...");
 
-      // Execute all 7 queries in parallel
-      const [
-        catsResult,
-        artsResult,
-        prodsResult,
-        dealsResult,
-        menusResult,
-        layoutsResult,
-        usersResult
-      ] = await Promise.all([
-        supabase.from('wc_categories').select('*'),
-        supabase.from('wc_articles').select('*'),
-        supabase.from('wc_products').select('*'),
-        supabase.from('wc_deals').select('*'),
-        supabase.from('wc_mega_menu_config').select('*').eq('id', 'default').maybeSingle(),
-        supabase.from('wc_homepage_layout_config').select('*').eq('id', 'default').maybeSingle(),
-        supabase.from('wc_registered_users').select('*')
-      ]);
+      const res = await fetch('/api/sync-down');
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+      
+      const data = await res.json();
       
       // 1. Sync Categories
-      if (!catsResult.error && catsResult.data && catsResult.data.length > 0) {
-        localStorage.setItem('wc_categories', JSON.stringify(catsResult.data));
+      if (data.categories && data.categories.length > 0) {
+        localStorage.setItem('wc_categories', JSON.stringify(data.categories));
       }
 
       // 2. Sync Articles
-      if (!artsResult.error && artsResult.data && artsResult.data.length > 0) {
-        localStorage.setItem('wc_articles', JSON.stringify(artsResult.data));
-        localStorage.setItem('review_articles', JSON.stringify(artsResult.data));
+      if (data.articles && data.articles.length > 0) {
+        localStorage.setItem('wc_articles', JSON.stringify(data.articles));
+        localStorage.setItem('review_articles', JSON.stringify(data.articles));
       }
 
       // 3. Sync Products
-      if (!prodsResult.error && prodsResult.data && prodsResult.data.length > 0) {
-        const mappedProds = prodsResult.data.map(p => ({
+      if (data.products && data.products.length > 0) {
+        const mappedProds = data.products.map(p => ({
           ...p,
           image: p.imageUrl || p.image || '',
           price: p.basePrice || p.price || '$0.00'
@@ -636,30 +621,30 @@ export const db = {
       }
 
       // 4. Sync Deals
-      if (!dealsResult.error && dealsResult.data && dealsResult.data.length > 0) {
-        localStorage.setItem('wc_deals', JSON.stringify(dealsResult.data));
+      if (data.deals && data.deals.length > 0) {
+        localStorage.setItem('wc_deals', JSON.stringify(data.deals));
       }
 
       // 5. Sync Menu Config
-      if (!menusResult.error && menusResult.data && menusResult.data.config) {
-        localStorage.setItem('wc_mega_menu_config', JSON.stringify(menusResult.data.config));
+      if (data.menu) {
+        localStorage.setItem('wc_mega_menu_config', JSON.stringify(data.menu));
       }
 
       // 6. Sync Homepage Config
-      if (!layoutsResult.error && layoutsResult.data && layoutsResult.data.config) {
-        localStorage.setItem('wc_homepage_layout_config', JSON.stringify(layoutsResult.data.config));
+      if (data.layout) {
+        localStorage.setItem('wc_homepage_layout_config', JSON.stringify(data.layout));
       }
 
       // 7. Sync Registered Users
-      if (usersResult && !usersResult.error && usersResult.data && usersResult.data.length > 0) {
-        localStorage.setItem('wc_registered_users', JSON.stringify(usersResult.data));
+      if (data.users && data.users.length > 0) {
+        localStorage.setItem('wc_registered_users', JSON.stringify(data.users));
       }
 
       this.invalidateCache();
       window.dispatchEvent(new CustomEvent('supabase-db-synced'));
-      console.log("[Supabase Sync] All database tables successfully updated from Supabase!");
+      console.log("[Local API Sync] All database tables successfully updated from VPS SQLite!");
     } catch (e) {
-      console.error("[Supabase Sync Error] Sync down failed:", e);
+      console.error("[Local API Sync Error] Sync down failed:", e);
     }
   },
 
