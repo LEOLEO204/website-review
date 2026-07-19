@@ -19,46 +19,7 @@ const isValidImageUrl = (url) => {
 };
 
 const getArticleImage = (art) => {
-  if (!art) return "";
-  if (art.image && isValidImageUrl(art.image)) {
-    return art.image.trim();
-  }
-  
-  const categoryImages = {
-    'electronics': 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?auto=format&fit=crop&q=80&w=600',
-    'sleep': 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&q=80&w=600',
-    'kitchen': 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80&w=600',
-    'home-garden': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=600',
-    'outdoors': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&q=80&w=600',
-    'gifts': 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&q=80&w=600',
-    'style': 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=600',
-    'baby-kid': 'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&q=80&w=600',
-    'pets': 'https://images.unsplash.com/photo-1444212477490-ca407925329e?auto=format&fit=crop&q=80&w=600',
-    'games-hobbies': 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=600',
-    'office': 'https://images.unsplash.com/photo-1527689368864-3a821dbccc34?auto=format&fit=crop&q=80&w=600',
-    'money': 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=600',
-    'apparel': 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&q=80&w=600'
-  };
-
-  const catKey = (art.categoryId || art.category || '').toLowerCase().trim();
-  
-  if (catKey.includes('tech') || catKey.includes('electronic')) {
-    return categoryImages['electronics'];
-  }
-  if (catKey.includes('home') || catKey.includes('garden') || catKey.includes('bathroom') || catKey.includes('clean') || catKey.includes('laundry')) {
-    return categoryImages['home-garden'];
-  }
-  if (catKey.includes('nursing') || catKey.includes('baby') || catKey.includes('kid') || catKey.includes('child')) {
-    return categoryImages['baby-kid'];
-  }
-
-  for (const key in categoryImages) {
-    if (catKey.includes(key) || key.includes(catKey)) {
-      return categoryImages[key];
-    }
-  }
-
-  return 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&q=80&w=600';
+  return "";
 };
 
 // ----------------------------------------------------
