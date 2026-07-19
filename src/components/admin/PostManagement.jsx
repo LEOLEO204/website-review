@@ -31,6 +31,7 @@ export default function PostManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [feedbackMsg, setFeedbackMsg] = useState('');
+  const [selectedPostIds, setSelectedPostIds] = useState([]);
 
   // Mega Menu State
   const [megaMenuConfig, setMegaMenuConfig] = useState({});
@@ -145,10 +146,27 @@ export default function PostManagement() {
   const handleDeletePost = (id) => {
     if (window.confirm("Are you sure you want to delete this article review?")) {
       db.deleteArticle(id);
+      setSelectedPostIds(prev => prev.filter(selectedId => selectedId !== id));
       reloadData();
       triggerFeedback("Article successfully deleted.");
     }
   };
+
+  const handleDeleteSelectedPosts = () => {
+    if (selectedPostIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete the ${selectedPostIds.length} selected articles?`)) {
+      selectedPostIds.forEach(id => {
+        db.deleteArticle(id);
+      });
+      reloadData();
+      setSelectedPostIds([]);
+      triggerFeedback(`${selectedPostIds.length} articles successfully deleted.`);
+    }
+  };
+
+  useEffect(() => {
+    setSelectedPostIds([]);
+  }, [searchTerm, statusFilter, activeTab]);
 
   // ----------------------------------------------------
   // PRODUCT DATABASE CRUD LOGIC
@@ -796,6 +814,15 @@ export default function PostManagement() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
+                {selectedPostIds.length > 0 && (
+                  <button
+                    onClick={handleDeleteSelectedPosts}
+                    className="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-sm animate-in fade-in slide-in-from-top-1 duration-150"
+                  >
+                    <Trash2 size={14} />
+                    <span>Xóa các bài viết đã chọn ({selectedPostIds.length})</span>
+                  </button>
+                )}
               </div>
 
               {/* Articles Table */}
@@ -804,6 +831,20 @@ export default function PostManagement() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-4 px-5 w-12 text-center">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-350 text-reviewsmart-brand focus:ring-reviewsmart-brand cursor-pointer w-4 h-4"
+                        checked={filteredPosts.length > 0 && selectedPostIds.length === filteredPosts.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPostIds(filteredPosts.map(p => p.id));
+                          } else {
+                            setSelectedPostIds([]);
+                          }
+                        }}
+                      />
+                    </th>
                     <th className="py-4 px-5 w-28">Article ID</th>
                     <th className="py-4 px-5 min-w-[320px]">Title & Category</th>
                     <th className="py-4 px-5 w-32">Status</th>
@@ -822,6 +863,20 @@ export default function PostManagement() {
                   {filteredPosts.length > 0 ? (
                     filteredPosts.map((post) => (
                       <tr key={post.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-4 px-5 text-center">
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-350 text-reviewsmart-brand focus:ring-reviewsmart-brand cursor-pointer w-4 h-4"
+                            checked={selectedPostIds.includes(post.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedPostIds(prev => [...prev, post.id]);
+                              } else {
+                                setSelectedPostIds(prev => prev.filter(selectedId => selectedId !== post.id));
+                              }
+                            }}
+                          />
+                        </td>
                         <td className="py-4 px-5 font-mono text-[10px] text-slate-400 font-medium">
                           {post.id}
                         </td>
@@ -888,7 +943,7 @@ export default function PostManagement() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="6" className="py-12 text-center text-slate-400 text-xs">
+                          <td colSpan="8" className="py-12 text-center text-slate-400 text-xs">
                             No articles found matching your query.
                           </td>
                         </tr>
