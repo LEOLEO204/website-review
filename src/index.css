@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-reviewsmart-brand: #da3723;
+  --color-reviewsmart-brandHover: #b52918;
+  --color-reviewsmart-text: #1a1a1a;
+  --color-reviewsmart-muted: #5a5a5a;
+  --color-reviewsmart-bgLight: #f7f7f7;
+  --color-reviewsmart-bgWhite: #ffffff;
+  --color-reviewsmart-border: #e2e2e2;
+  --color-reviewsmart-accentGreen: #267746;
+  
+  --font-serif: Georgia, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-reviewsmart-bgWhite text-reviewsmart-text font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-reviewsmart-text tracking-tight;
+  }
+}
+
+/* Custom scrollbar for better UX */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Smooth scroll for Table of Contents & 20% global font size scaling */
+html {
+  font-size: 120%;
+  scroll-behavior: smooth;
+  scroll-padding-top: 130px; /* offset for sticky header */
+}
+
+/* Custom overrides to scale arbitrary absolute Tailwind pixel sizes up by 20% */
+.text-\[9px\] {
+  font-size: 10.8px !important;
+}
+.text-\[10px\] {
+  font-size: 12px !important;
+}
+.text-\[11px\] {
+  font-size: 13.2px !important;
+}
+.text-\[13px\] {
+  font-size: 15.6px !important;
+}
+.text-\[15px\] {
+  font-size: 18px !important;
+}
+
+/* Settings gear spin hover effect */
+.group:hover .animate-spin-hover,
+a:hover .animate-spin-hover,
+button:hover .animate-spin-hover {
+  transform: rotate(45deg);
+}
+.animate-spin-hover {
+  transition: transform 0.3s ease-out;
+}
+
