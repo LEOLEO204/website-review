@@ -239,6 +239,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
   const [isEditing, setIsEditing] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [selectedArticleIds, setSelectedArticleIds] = useState([]);
 
   // Core Form State
   const [articleForm, setArticleForm] = useState({
@@ -481,8 +482,27 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     }
     if (window.confirm("Are you sure you want to delete this article?")) {
       deleteArticle(id);
+      setSelectedArticleIds(prev => prev.filter(selectedId => selectedId !== id));
     }
   };
+
+  const handleDeleteSelectedArticles = () => {
+    if (isReadOnly) {
+      alert("Bank-grade Security Alert: Access Denied. Your role 'staff_writer' is restricted to read-only access. Delete operations are forbidden.");
+      return;
+    }
+    if (selectedArticleIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete the ${selectedArticleIds.length} selected articles?`)) {
+      selectedArticleIds.forEach(id => {
+        deleteArticle(id);
+      });
+      setSelectedArticleIds([]);
+    }
+  };
+
+  useEffect(() => {
+    setSelectedArticleIds([]);
+  }, [searchTerm, statusFilter, categoryFilter, isEditing]);
 
   const filteredArticles = articles.filter(art => {
     const matchesSearch = (art.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -894,6 +914,17 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
                   ))}
                 </select>
               </div>
+
+              {selectedArticleIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleDeleteSelectedArticles}
+                  className="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm animate-in fade-in slide-in-from-top-1 duration-150"
+                >
+                  <Trash2 size={13} />
+                  <span>Xóa đã chọn ({selectedArticleIds.length})</span>
+                </button>
+              )}
             </div>
 
             <div className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-lg flex items-center gap-1 shrink-0 select-none shadow-sm w-full sm:w-auto justify-center sm:justify-start">
@@ -907,6 +938,20 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-4 px-5 w-12 text-center">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-350 text-reviewsmart-brand focus:ring-reviewsmart-brand cursor-pointer w-4 h-4"
+                        checked={filteredArticles.length > 0 && selectedArticleIds.length === filteredArticles.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedArticleIds(filteredArticles.map(a => a.id));
+                          } else {
+                            setSelectedArticleIds([]);
+                          }
+                        }}
+                      />
+                    </th>
                     <th className="py-4 px-5 w-28">Article ID</th>
                     <th className="py-4 px-5 min-w-[320px]">Title & Category</th>
                     <th className="py-4 px-5 w-24 text-center">Views</th>
@@ -919,6 +964,20 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
                   {filteredArticles.length > 0 ? (
                     filteredArticles.map((art) => (
                       <tr key={art.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-4 px-5 text-center">
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-350 text-reviewsmart-brand focus:ring-reviewsmart-brand cursor-pointer w-4 h-4"
+                            checked={selectedArticleIds.includes(art.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedArticleIds(prev => [...prev, art.id]);
+                              } else {
+                                setSelectedArticleIds(prev => prev.filter(selectedId => selectedId !== art.id));
+                              }
+                            }}
+                          />
+                        </td>
                         <td className="py-4 px-5 font-mono text-[10px] text-slate-400 font-medium">
                           {art.id}
                         </td>
@@ -954,6 +1013,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
                         <td className="py-4 px-5 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <button 
+                              type="button"
                               onClick={() => setEditingArticleId(art.id)}
                               className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-950 transition-colors"
                               title="Edit article parameters"
@@ -961,6 +1021,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
                               <Edit2 size={13} />
                             </button>
                             <button 
+                              type="button"
                               onClick={() => handleDeleteClick(art.id)}
                               className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-rose-600 transition-colors"
                               title="Delete guide"
@@ -973,7 +1034,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="py-12 text-center text-slate-400 text-xs">
+                      <td colSpan="7" className="py-12 text-center text-slate-400 text-xs">
                         No articles matched the filter criteria.
                       </td>
                     </tr>
