@@ -1,10 +1,10 @@
-import React from 'react';
 import { 
   FileText, 
   LogOut,
   Globe,
   Users,
-  Layout
+  Layout,
+  Database
 } from 'lucide-react';
 
 export default function AdminSidebar({ activeTab, setActiveTab, onLogout }) {
@@ -12,6 +12,7 @@ export default function AdminSidebar({ activeTab, setActiveTab, onLogout }) {
     { id: 'articles', label: 'Review Articles', icon: FileText },
     { id: 'homepage-layout', label: 'Homepage Layout', icon: Layout },
     { id: 'accounts', label: 'Admin Accounts', icon: Users },
+    { id: 'supabase-setup', label: 'Cơ sở dữ liệu VPS', icon: Database },
   ];
 
   const sessionUser = (() => {
