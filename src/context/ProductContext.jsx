@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { secureStorage } from '../utils/security';
 import { db } from '../db';
+import { syncArrayToSupabase } from '../utils/supabase';
 
 const localStorage = {
   getItem(key) {
@@ -48,6 +49,10 @@ export const ProductProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('review_products', JSON.stringify(products));
     localStorage.setItem('wc_products', JSON.stringify(products));
+    db.invalidateCache();
+    
+    // Synchronize to VPS database
+    syncArrayToSupabase('wc_products', products);
   }, [products]);
 
   const addProduct = (product) => {

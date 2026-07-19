@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { secureStorage } from '../utils/security';
 import { db } from '../db';
+import { syncArrayToSupabase } from '../utils/supabase';
 
 const localStorage = {
   getItem(key) {
@@ -81,6 +82,9 @@ export const ArticleProvider = ({ children }) => {
     localStorage.setItem('review_articles', JSON.stringify(articles));
     localStorage.setItem('wc_articles', JSON.stringify(articles));
     db.invalidateCache(); // Ensure db caches are cleared when articles update
+    
+    // Synchronize to VPS database
+    syncArrayToSupabase('wc_articles', articles);
     
     // Dispatch sync event with local update flag so other components reload,
     // but ArticleContext's listener ignores it to prevent loops.
