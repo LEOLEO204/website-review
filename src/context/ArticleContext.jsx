@@ -44,6 +44,8 @@ const mapCategoryToId = (categoryName) => {
 export const ArticleContext = createContext();
 
 export const ArticleProvider = ({ children }) => {
+  const isIncomingSyncRef = React.useRef(false);
+
   const [articles, setArticles] = useState(() => {
     try {
       const dbArticles = db.getArticles() || [];
@@ -64,6 +66,7 @@ export const ArticleProvider = ({ children }) => {
       if (e?.detail?.isLocalUpdate) return;
       try {
         const dbArticles = db.getArticles() || [];
+        isIncomingSyncRef.current = true;
         setArticles(dbArticles.map(art => {
           if (!art.categoryId && art.category) {
             return { ...art, categoryId: mapCategoryToId(art.category) };
@@ -82,6 +85,11 @@ export const ArticleProvider = ({ children }) => {
     localStorage.setItem('review_articles', JSON.stringify(articles));
     localStorage.setItem('wc_articles', JSON.stringify(articles));
     db.invalidateCache(); // Ensure db caches are cleared when articles update
+    
+    if (isIncomingSyncRef.current) {
+      isIncomingSyncRef.current = false;
+      return;
+    }
     
     // Synchronize to VPS database
     syncArrayToSupabase('wc_articles', articles);

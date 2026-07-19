@@ -174,6 +174,20 @@ app.get('/api/sync-down', (req, res) => {
   });
 });
 
+// Simple queue to serialize database operations
+let dbQueue = Promise.resolve();
+
+const queueDbOperation = (opFn) => {
+  return new Promise((resolve, reject) => {
+    dbQueue = dbQueue
+      .then(() => new Promise((res, rej) => {
+        opFn(res, rej);
+      }))
+      .then(resolve)
+      .catch(reject);
+  });
+};
+
 // 2. Sync Array (Bulk Upsert/Replace table data)
 app.post('/api/sync-array', (req, res) => {
   const { table, data } = req.body;
@@ -219,42 +233,70 @@ app.post('/api/sync-array', (req, res) => {
     return res.status(400).json({ error: `Table '${table}' not supported for array sync.` });
   }
 
-  db.serialize(() => {
-    db.run("BEGIN TRANSACTION");
-    db.run(`DELETE FROM ${table}`, [], (err) => {
-      if (err) {
-        db.run("ROLLBACK");
-        return res.status(500).json({ error: err.message });
-      }
+  queueDbOperation((resolveQueue, rejectQueue) => {
+    db.serialize(() => {
+      db.run("BEGIN TRANSACTION", (txErr) => {
+        if (txErr) {
+          console.error("Failed to begin transaction:", txErr.message);
+          rejectQueue(txErr);
+          return res.status(500).json({ error: txErr.message });
+        }
 
-      const stmt = db.prepare(query);
-      let hasError = false;
-      
-      for (const item of data) {
-        try {
-          const params = serializeRow(item);
-          stmt.run(params, (runErr) => {
-            if (runErr) {
-              console.error(`Error inserting into ${table}:`, runErr.message);
+        db.run(`DELETE FROM ${table}`, [], (delErr) => {
+          if (delErr) {
+            console.error(`Failed to delete from ${table}:`, delErr.message);
+            db.run("ROLLBACK", () => {
+              rejectQueue(delErr);
+            });
+            return res.status(500).json({ error: delErr.message });
+          }
+
+          const stmt = db.prepare(query);
+          let hasError = false;
+          
+          for (const item of data) {
+            try {
+              const params = serializeRow(item);
+              stmt.run(params, (runErr) => {
+                if (runErr) {
+                  console.error(`Error inserting into ${table}:`, runErr.message);
+                  hasError = true;
+                }
+              });
+            } catch (serializeErr) {
+              console.error(`Serialization error for ${table}:`, serializeErr);
               hasError = true;
             }
-          });
-        } catch (serializeErr) {
-          console.error(`Serialization error for ${table}:`, serializeErr);
-          hasError = true;
-        }
-      }
+          }
 
-      stmt.finalize((finalErr) => {
-        if (hasError || finalErr) {
-          db.run("ROLLBACK");
-          return res.status(500).json({ error: 'Transaction failed during insertion.' });
-        } else {
-          db.run("COMMIT");
-          return res.json({ success: true, count: data.length });
-        }
+          stmt.finalize((finalErr) => {
+            if (hasError || finalErr) {
+              console.error("Finalizing statement failed or row errors occurred. Rolling back...");
+              db.run("ROLLBACK", () => {
+                rejectQueue(finalErr || new Error("Row insertion error"));
+              });
+              return res.status(500).json({ error: 'Transaction failed during insertion.' });
+            } else {
+              db.run("COMMIT", (commitErr) => {
+                if (commitErr) {
+                  console.error("Failed to commit transaction:", commitErr.message);
+                  db.run("ROLLBACK", () => {
+                    rejectQueue(commitErr);
+                  });
+                  return res.status(500).json({ error: commitErr.message });
+                } else {
+                  console.log(`[Local API Sync] Successfully transaction committed for ${table}. Count: ${data.length}`);
+                  resolveQueue();
+                  return res.json({ success: true, count: data.length });
+                }
+              });
+            }
+          });
+        });
       });
     });
+  }).catch((err) => {
+    console.error("Queue operation caught error:", err);
   });
 });
 

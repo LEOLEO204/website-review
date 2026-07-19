@@ -24,6 +24,8 @@ const localStorage = {
 export const ProductContext = createContext();
 
 export const ProductProvider = ({ children }) => {
+  const isIncomingSyncRef = React.useRef(false);
+
   const [products, setProducts] = useState(() => {
     try {
       return db.getProducts() || [];
@@ -37,6 +39,7 @@ export const ProductProvider = ({ children }) => {
     const handleSync = () => {
       try {
         const dbProducts = db.getProducts() || [];
+        isIncomingSyncRef.current = true;
         setProducts(dbProducts);
       } catch (e) {
         console.error("Sync reload error in ProductContext:", e);
@@ -50,6 +53,11 @@ export const ProductProvider = ({ children }) => {
     localStorage.setItem('review_products', JSON.stringify(products));
     localStorage.setItem('wc_products', JSON.stringify(products));
     db.invalidateCache();
+    
+    if (isIncomingSyncRef.current) {
+      isIncomingSyncRef.current = false;
+      return;
+    }
     
     // Synchronize to VPS database
     syncArrayToSupabase('wc_products', products);
