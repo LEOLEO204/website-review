@@ -62,7 +62,7 @@ export default function HomePage({ triggerAffiliate, searchQuery }) {
 
   const [categories, setCategories] = useState(() => {
     const rawCategories = db.getCategories();
-    const menuKeys = ['home-garden', 'kitchen', 'health-fitness', 'electronics', 'baby-kid', 'style', 'gifts'];
+    const menuKeys = ['home-garden', 'kitchen', 'health-fitness', 'electronics', 'baby-kid', 'style', 'gifts', 'web-hosting-software', 'sports-outdoors'];
     const filtered = (Array.isArray(rawCategories) ? rawCategories : [])
       .filter(cat => menuKeys.includes(cat.id));
     const orderMap = {
@@ -72,7 +72,9 @@ export default function HomePage({ triggerAffiliate, searchQuery }) {
       'electronics': 4,
       'baby-kid': 5,
       'style': 6,
-      'gifts': 7
+      'gifts': 7,
+      'web-hosting-software': 8,
+      'sports-outdoors': 9
     };
     filtered.sort((a, b) => (orderMap[a.id] || 99) - (orderMap[b.id] || 99));
     return filtered;
@@ -97,7 +99,7 @@ export default function HomePage({ triggerAffiliate, searchQuery }) {
       setProducts(Array.isArray(rawProducts) ? rawProducts : []);
 
       const rawCategories = db.getCategories();
-      const menuKeys = ['home-garden', 'kitchen', 'health-fitness', 'electronics', 'baby-kid', 'style', 'gifts'];
+      const menuKeys = ['home-garden', 'kitchen', 'health-fitness', 'electronics', 'baby-kid', 'style', 'gifts', 'web-hosting-software', 'sports-outdoors'];
       const filteredCategories = (Array.isArray(rawCategories) ? rawCategories : [])
         .filter(cat => menuKeys.includes(cat.id));
       const orderMap = {
@@ -107,7 +109,9 @@ export default function HomePage({ triggerAffiliate, searchQuery }) {
         'electronics': 4,
         'baby-kid': 5,
         'style': 6,
-        'gifts': 7
+        'gifts': 7,
+        'web-hosting-software': 8,
+        'sports-outdoors': 9
       };
       filteredCategories.sort((a, b) => (orderMap[a.id] || 99) - (orderMap[b.id] || 99));
       setCategories(filteredCategories);

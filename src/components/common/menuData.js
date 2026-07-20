@@ -332,5 +332,37 @@ export const menuData = {
         { title: "Beach & Survival", items: ["Beach", "Beach umbrellas & shades", "Beach bags", "Beach towels", "Portable generators", "Pocket knives", "Headlamps", "Hand warmers", "Flashlights"] }
       ]
     }
+  ],
+  "Web Hosting & Software": [
+    {
+      subCategory: "Web Hosting",
+      columns: [
+        { title: "Hosting Services", items: ["Shared Hosting", "VPS Hosting", "WordPress Hosting", "Dedicated Hosting", "Cloud Hosting"] },
+        { title: "Providers", items: ["HostArmada", "Hostinger", "Bluehost", "SiteGround", "A2 Hosting"] }
+      ]
+    },
+    {
+      subCategory: "Software & SaaS",
+      columns: [
+        { title: "Security Software", items: ["VPNs", "Password managers", "Antivirus software", "Ad blockers"] },
+        { title: "Web Tools", items: ["Website builders", "Domain registrars", "E-commerce platforms", "Cloud storage"] }
+      ]
+    }
+  ],
+  "Sports & Outdoors": [
+    {
+      subCategory: "Outdoor Recreation",
+      columns: [
+        { title: "Camping & Hiking", items: ["Camping tents", "Sleeping bags", "Backpacks", "Hiking boots", "Camp stoves", "Lanterns & headlamps"] },
+        { title: "Cycling & Bikes", items: ["E-bikes", "Hybrid bikes", "Bike helmets", "Bike locks", "Bike lights"] }
+      ]
+    },
+    {
+      subCategory: "Athletic & Fitness",
+      columns: [
+        { title: "Fitness Equipment", items: ["Adjustable dumbbells", "Yoga mats", "Treadmills", "Resistance bands", "Massage guns"] },
+        { title: "Sports Gear", items: ["Running shoes", "GPS running watches", "Water bottles", "Athletic socks"] }
+      ]
+    }
   ]
 };

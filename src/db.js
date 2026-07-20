@@ -100,6 +100,22 @@ const initialCategories = [
       "Gifts for Kids",
       "Seasonal Gifts"
     ] 
+  },
+  {
+    id: "web-hosting-software",
+    name: "Web Hosting & Software",
+    subcategories: [
+      "Web Hosting",
+      "Software & SaaS"
+    ]
+  },
+  {
+    id: "sports-outdoors",
+    name: "Sports & Outdoors",
+    subcategories: [
+      "Outdoor Recreation",
+      "Athletic & Fitness"
+    ]
   }
 ];
 
@@ -670,9 +686,9 @@ export const db = {
       localStorage.setItem("wc_articles_seeded_v4", "true");
     }
 
-    // Force reset/update categories if needed to match the new 7 categories configuration
+    // Force reset/update categories if needed to match the new 9 categories configuration
     const existingCats = localStorage.getItem("wc_categories");
-    if (!existingCats || JSON.parse(existingCats).length !== 7 || !JSON.stringify(existingCats).includes('"id":"style"') || !JSON.stringify(existingCats).includes('"id":"gifts"') || !JSON.stringify(existingCats).includes('"name":"Tech"')) {
+    if (!existingCats || JSON.parse(existingCats).length !== 9 || !JSON.stringify(existingCats).includes('"id":"web-hosting-software"') || !JSON.stringify(existingCats).includes('"id":"sports-outdoors"')) {
       localStorage.setItem("wc_categories", JSON.stringify(initialCategories));
     }
     
@@ -789,8 +805,8 @@ export const db = {
                 changed = true;
               }
               
-              // 5. Ensure category is one of the 7 allowed names
-              const allowedNames = ["Home & Garden", "Kitchen", "Health & Lifestyle", "Tech", "Baby & Kid", "Style", "Gifts"];
+              // 5. Ensure category is one of the 9 allowed names
+              const allowedNames = ["Home & Garden", "Kitchen", "Health & Lifestyle", "Tech", "Baby & Kid", "Style", "Gifts", "Web Hosting & Software", "Sports & Outdoors"];
               if (!allowedNames.includes(art.category)) {
                 art.category = "Home & Garden";
                 art.categoryId = "home-garden";
@@ -805,7 +821,9 @@ export const db = {
                 "Tech": "electronics",
                 "Baby & Kid": "baby-kid",
                 "Style": "style",
-                "Gifts": "gifts"
+                "Gifts": "gifts",
+                "Web Hosting & Software": "web-hosting-software",
+                "Sports & Outdoors": "sports-outdoors"
               };
               if (catMap[art.category] && art.categoryId !== catMap[art.category]) {
                 art.categoryId = catMap[art.category];
@@ -1281,7 +1299,9 @@ export const db = {
         "Gifts": "gifts",
         "Pets": "pets",
         "Office": "office",
-        "Sleep": "sleep"
+        "Sleep": "sleep",
+        "Web Hosting & Software": "web-hosting-software",
+        "Sports & Outdoors": "sports-outdoors"
       };
       return mapping[categoryName] || categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     };

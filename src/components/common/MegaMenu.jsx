@@ -42,7 +42,9 @@ export default function MegaMenu() {
       "Gifts": "gifts",
       "Pets": "pets",
       "Office": "office",
-      "Sleep": "sleep"
+      "Sleep": "sleep",
+      "Web Hosting & Software": "web-hosting-software",
+      "Sports & Outdoors": "sports-outdoors"
     };
     return mapping[categoryName] || categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   };
@@ -54,7 +56,9 @@ export default function MegaMenu() {
     { label: 'Tech', key: 'Tech', path: '/category/electronics' },
     { label: 'Baby & Kid', key: 'Baby & Kid', path: '/category/baby-kid' },
     { label: 'Style', key: 'Style', path: '/category/style' },
-    { label: 'Gifts', key: 'Gifts', path: '/category/gifts' }
+    { label: 'Gifts', key: 'Gifts', path: '/category/gifts' },
+    { label: 'Web Hosting & Software', key: 'Web Hosting & Software', path: '/category/web-hosting-software' },
+    { label: 'Sports & Outdoors', key: 'Sports & Outdoors', path: '/category/sports-outdoors' }
   ];
 
   const handleMouseEnterCategory = (catKey) => {

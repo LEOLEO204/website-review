@@ -999,6 +999,8 @@ export default function PostManagement() {
                         <option value="style">Style</option>
                         <option value="office">Office</option>
                         <option value="pets">Pets</option>
+                        <option value="web-hosting-software">Web Hosting & Software</option>
+                        <option value="sports-outdoors">Sports & Outdoors</option>
                       </select>
                     </div>
                   </div>

@@ -30,7 +30,9 @@ const mapIdToCategoryName = (id) => {
     "gifts": "Gifts",
     "pets": "Pets",
     "office": "Office",
-    "sleep": "Sleep"
+    "sleep": "Sleep",
+    "web-hosting-software": "Web Hosting & Software",
+    "sports-outdoors": "Sports & Outdoors"
   };
   return mapping[id] || id;
 };

@@ -36,7 +36,9 @@ const mapCategoryToId = (categoryName) => {
     "Gifts": "gifts",
     "Pets": "pets",
     "Office": "office",
-    "Sleep": "sleep"
+    "Sleep": "sleep",
+    "Web Hosting & Software": "web-hosting-software",
+    "Sports & Outdoors": "sports-outdoors"
   };
   return mapping[categoryName] || (categoryName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
 };
