@@ -277,12 +277,17 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
   const currentSubCats = menuData[articleForm.category] || [];
   const subCategoryOptions = currentSubCats.map(s => s.subCategory);
 
-  // Real-time SEO analysis engine
+  // Real-time Advanced SEO Content Auditor Engine (E-E-A-T, AEO, SXO, CRO)
   const seoAnalysis = useMemo(() => {
     const scoreDetails = [];
     let score = 0;
 
-    // 1. Title length check (15 pts)
+    // Find the editorial text content
+    const firstBlock = articleForm.blocks && articleForm.blocks[0];
+    const contentText = firstBlock ? firstBlock.value || '' : '';
+    const paragraphs = contentText.split('\n\n').map(p => p.trim()).filter(p => p.length > 0);
+
+    // 1. Title Length & Intent (15 pts)
     const titleLen = articleForm.title ? articleForm.title.length : 0;
     if (titleLen >= 30 && titleLen <= 60) {
       score += 15;
@@ -291,88 +296,105 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       score += 8;
       scoreDetails.push({ label: 'Độ dài tiêu đề (chưa tối ưu)', passed: false, text: `${titleLen} ký tự` });
     } else {
-      scoreDetails.push({ label: 'Chưa có tiêu đề', passed: false, text: '0 ký tự' });
+      scoreDetails.push({ label: 'Chưa có tiêu đề', passed: false, text: 'Trống' });
     }
 
-    // 2. Intro check (Meta Description equivalent) (15 pts)
-    const introLen = articleForm.intro ? articleForm.intro.length : 0;
-    if (introLen >= 100 && introLen <= 160) {
-      score += 15;
-      scoreDetails.push({ label: 'Độ dài Intro (100-160 ký tự)', passed: true, text: `${introLen} ký tự` });
-    } else if (introLen > 0) {
-      score += 8;
-      scoreDetails.push({ label: 'Độ dài Intro (chưa tối ưu)', passed: false, text: `${introLen} ký tự` });
-    } else {
-      scoreDetails.push({ label: 'Chưa có tóm tắt bài viết', passed: false, text: '0 ký tự' });
+    // 2. Heading Level Hierarchy (10 pts)
+    // Extract heading markdown sizes (e.g. ## = 2, ### = 3)
+    const headingLevels = (contentText.match(/^\s*#{1,6}\s+/gm) || []).map(h => h.trim().length);
+    let hierarchyPassed = true;
+    for (let i = 1; i < headingLevels.length; i++) {
+      if (headingLevels[i] - headingLevels[i-1] > 1) {
+        hierarchyPassed = false;
+        break;
+      }
     }
-
-    // Find the editorial text content
-    const firstBlock = articleForm.blocks && articleForm.blocks[0];
-    const contentText = firstBlock ? firstBlock.value || '' : '';
-
-    // 3. Word Count (20 pts)
-    const words = contentText.trim().split(/\s+/).filter(w => w.length > 0);
-    const wordCount = words.length;
-    if (wordCount >= 600) {
-      score += 20;
-      scoreDetails.push({ label: 'Số lượng từ (>= 600 từ)', passed: true, text: `${wordCount} từ` });
-    } else if (wordCount >= 300) {
-      score += 15;
-      scoreDetails.push({ label: 'Số lượng từ (>= 300 từ)', passed: true, text: `${wordCount} từ` });
-    } else if (wordCount > 0) {
-      score += 8;
-      scoreDetails.push({ label: 'Bài viết quá ngắn', passed: false, text: `${wordCount} từ (Cần >=300)` });
-    } else {
-      scoreDetails.push({ label: 'Chưa viết nội dung', passed: false, text: '0 từ' });
-    }
-
-    // 4. Headings (H2/H3 in Markdown) (15 pts)
-    const hasHeadings = /^\s*##\s+/m.test(contentText) || /^\s*###\s+/m.test(contentText);
-    if (hasHeadings) {
-      score += 15;
-      scoreDetails.push({ label: 'Có tiêu đề phụ H2/H3', passed: true, text: 'Đạt' });
-    } else {
-      scoreDetails.push({ label: 'Thiếu tiêu đề phụ H2/H3', passed: false, text: 'Sử dụng ##' });
-    }
-
-    // 5. Featured Image or Block Image (15 pts)
-    const featuredImg = articleForm.image;
-    const blockImg = firstBlock ? firstBlock.image : '';
-    const hasImages = (featuredImg && featuredImg.trim().length > 0) || (blockImg && blockImg.trim().length > 0);
-    if (hasImages) {
-      score += 15;
-      scoreDetails.push({ label: 'Hình ảnh được thiết lập', passed: true, text: 'Đạt' });
-    } else {
-      scoreDetails.push({ label: 'Thiếu hình ảnh bài viết', passed: false, text: 'Thêm ảnh' });
-    }
-
-    // 6. Referral Link / Outbound Link (10 pts)
-    const refLink = firstBlock ? firstBlock.refLink : '';
-    const hasLink = refLink && refLink.trim().length > 0;
-    if (hasLink) {
+    if (headingLevels.length > 0 && hierarchyPassed) {
       score += 10;
-      scoreDetails.push({ label: 'Có liên kết sản phẩm', passed: true, text: 'Đạt' });
+      scoreDetails.push({ label: 'Cấu trúc heading (Phân cấp logic)', passed: true, text: 'Chuẩn' });
+    } else if (headingLevels.length > 0) {
+      scoreDetails.push({ label: 'Cấu trúc heading (Bị nhảy cấp)', passed: false, text: 'Nhảy cấp' });
     } else {
-      scoreDetails.push({ label: 'Thiếu liên kết sản phẩm', passed: false, text: 'Thêm link' });
+      scoreDetails.push({ label: 'Cấu trúc heading H2/H3', passed: false, text: 'Thiếu' });
     }
 
-    // 7. Keyword in Title and Content (10 pts)
-    let keywordFound = false;
-    let mainKeyword = 'N/A';
-    if (titleLen > 0 && wordCount > 0) {
-      const titleWords = articleForm.title.toLowerCase().split(/\s+/).filter(w => w.length > 4);
-      if (titleWords.length > 0) {
-        mainKeyword = titleWords[0];
-        if (contentText.toLowerCase().includes(mainKeyword)) {
-          keywordFound = true;
+    // 3. E-E-A-T Experiential Words (15 pts)
+    // Checks for personal experiential words to filter out generic rewrite feel.
+    const eeatRegex = /(tôi|mình|chúng tôi|trải nghiệm|thực tế|thử nghiệm|đánh giá cá nhân|sử dụng qua|cảm nhận|quan sát)/i;
+    const hasEeat = eeatRegex.test(contentText);
+    if (hasEeat) {
+      score += 15;
+      scoreDetails.push({ label: 'E-E-A-T (Trải nghiệm cá nhân độc bản)', passed: true, text: 'Đạt E-E-A-T' });
+    } else {
+      scoreDetails.push({ label: 'E-E-A-T (Thiếu trải nghiệm thực tế)', passed: false, text: 'Lý thuyết suông' });
+    }
+
+    // 4. Semantic SEO / AI Overview Answer Snippets (15 pts)
+    // Checks for short direct answers immediately following subheadings for SGE/AEO.
+    let hasAeoSnippet = false;
+    for (let i = 0; i < paragraphs.length; i++) {
+      const p = paragraphs[i];
+      if ((p.startsWith('##') || p.startsWith('###')) && paragraphs[i+1]) {
+        const nextP = paragraphs[i+1];
+        if (nextP.length > 0 && nextP.length < 250 && /(là|bao gồm|chính là|giúp|tốt nhất|mang lại|kết quả là)/i.test(nextP)) {
+          hasAeoSnippet = true;
+          break;
         }
       }
     }
-    if (keywordFound) {
-      score += 10;
-      scoreDetails.push({ label: `Từ khóa "${mainKeyword}" có trong thân bài`, passed: true, text: 'Khớp' });
+    if (hasAeoSnippet) {
+      score += 15;
+      scoreDetails.push({ label: 'Tối ưu AI Search (Câu trả lời trực tiếp)', passed: true, text: 'Đạt Snippet' });
     } else {
-      scoreDetails.push({ label: 'Mật độ từ khóa', passed: false, text: 'Không trùng' });
+      scoreDetails.push({ label: 'Tối ưu AI Search (Thiếu câu trả lời ngắn)', passed: false, text: 'Chưa tối ưu' });
+    }
+
+    // 5. Scannability & Formatting (SXO - Bullet points + Bold) (15 pts)
+    const hasBullets = /^\s*([\*\+\-]|([0-9]+\.))\s+/m.test(contentText);
+    const hasBold = /\*\*.*?\*\*/.test(contentText);
+    if (hasBullets && hasBold) {
+      score += 15;
+      scoreDetails.push({ label: 'Định dạng SXO (Bullet points + Bôi đậm)', passed: true, text: 'Dễ quét' });
+    } else if (hasBullets || hasBold) {
+      score += 8;
+      scoreDetails.push({ label: 'Định dạng SXO (Thiếu Bullet/Bôi đậm)', passed: false, text: 'Thiếu định dạng' });
+    } else {
+      scoreDetails.push({ label: 'Thiếu định dạng nổi bật SXO', passed: false, text: 'Văn bản thuần' });
+    }
+
+    // 6. Paragraph length limit (Conciseness) (10 pts)
+    // Check if paragraphs are short (under 400 chars)
+    const longParagraphs = paragraphs.filter(p => !p.startsWith('#') && p.length > 400);
+    if (paragraphs.length > 0 && longParagraphs.length === 0) {
+      score += 10;
+      scoreDetails.push({ label: 'Đoạn văn ngắn gọn (<= 4 dòng)', passed: true, text: 'Đạt' });
+    } else if (paragraphs.length > 0) {
+      scoreDetails.push({ label: 'Có đoạn văn quá dài (> 4 dòng)', passed: false, text: `${longParagraphs.length} đoạn dài` });
+    } else {
+      scoreDetails.push({ label: 'Độ dài đoạn văn', passed: false, text: 'Trống' });
+    }
+
+    // 7. SXO & Call To Action (CRO / Conversion) (10 pts)
+    const refLink = firstBlock ? firstBlock.refLink : '';
+    const hasCta = (refLink && refLink.trim().length > 0) || /(mua ngay|click|xem giá|tại đây|buy now|chọn mua|đặt mua|sở hữu ngay)/i.test(contentText);
+    if (hasCta) {
+      score += 10;
+      scoreDetails.push({ label: 'Call to Action (CTA / CRO)', passed: true, text: 'Đạt CRO' });
+    } else {
+      scoreDetails.push({ label: 'Thiếu Call to Action / Khối mua', passed: false, text: 'Thiếu CTA' });
+    }
+
+    // 8. Word Count & On-page Depth (10 pts)
+    const words = contentText.trim().split(/\s+/).filter(w => w.length > 0);
+    const wordCount = words.length;
+    if (wordCount >= 600) {
+      score += 10;
+      scoreDetails.push({ label: 'Tổng số từ (Chuẩn SEO >= 600 từ)', passed: true, text: `${wordCount} từ` });
+    } else if (wordCount >= 300) {
+      score += 6;
+      scoreDetails.push({ label: 'Tổng số từ (Tối thiểu từ 300 từ)', passed: true, text: `${wordCount} từ` });
+    } else {
+      scoreDetails.push({ label: 'Bài viết chưa sâu sắc', passed: false, text: `${wordCount}/300 từ` });
     }
 
     return {
