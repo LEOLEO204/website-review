@@ -277,6 +277,110 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
   const currentSubCats = menuData[articleForm.category] || [];
   const subCategoryOptions = currentSubCats.map(s => s.subCategory);
 
+  // Real-time SEO analysis engine
+  const seoAnalysis = useMemo(() => {
+    const scoreDetails = [];
+    let score = 0;
+
+    // 1. Title length check (15 pts)
+    const titleLen = articleForm.title ? articleForm.title.length : 0;
+    if (titleLen >= 30 && titleLen <= 60) {
+      score += 15;
+      scoreDetails.push({ label: 'Độ dài tiêu đề (30-60 ký tự)', passed: true, text: `${titleLen} ký tự` });
+    } else if (titleLen > 0) {
+      score += 8;
+      scoreDetails.push({ label: 'Độ dài tiêu đề (chưa tối ưu)', passed: false, text: `${titleLen} ký tự` });
+    } else {
+      scoreDetails.push({ label: 'Chưa có tiêu đề', passed: false, text: '0 ký tự' });
+    }
+
+    // 2. Intro check (Meta Description equivalent) (15 pts)
+    const introLen = articleForm.intro ? articleForm.intro.length : 0;
+    if (introLen >= 100 && introLen <= 160) {
+      score += 15;
+      scoreDetails.push({ label: 'Độ dài Intro (100-160 ký tự)', passed: true, text: `${introLen} ký tự` });
+    } else if (introLen > 0) {
+      score += 8;
+      scoreDetails.push({ label: 'Độ dài Intro (chưa tối ưu)', passed: false, text: `${introLen} ký tự` });
+    } else {
+      scoreDetails.push({ label: 'Chưa có tóm tắt bài viết', passed: false, text: '0 ký tự' });
+    }
+
+    // Find the editorial text content
+    const firstBlock = articleForm.blocks && articleForm.blocks[0];
+    const contentText = firstBlock ? firstBlock.value || '' : '';
+
+    // 3. Word Count (20 pts)
+    const words = contentText.trim().split(/\s+/).filter(w => w.length > 0);
+    const wordCount = words.length;
+    if (wordCount >= 600) {
+      score += 20;
+      scoreDetails.push({ label: 'Số lượng từ (>= 600 từ)', passed: true, text: `${wordCount} từ` });
+    } else if (wordCount >= 300) {
+      score += 15;
+      scoreDetails.push({ label: 'Số lượng từ (>= 300 từ)', passed: true, text: `${wordCount} từ` });
+    } else if (wordCount > 0) {
+      score += 8;
+      scoreDetails.push({ label: 'Bài viết quá ngắn', passed: false, text: `${wordCount} từ (Cần >=300)` });
+    } else {
+      scoreDetails.push({ label: 'Chưa viết nội dung', passed: false, text: '0 từ' });
+    }
+
+    // 4. Headings (H2/H3 in Markdown) (15 pts)
+    const hasHeadings = /^\s*##\s+/m.test(contentText) || /^\s*###\s+/m.test(contentText);
+    if (hasHeadings) {
+      score += 15;
+      scoreDetails.push({ label: 'Có tiêu đề phụ H2/H3', passed: true, text: 'Đạt' });
+    } else {
+      scoreDetails.push({ label: 'Thiếu tiêu đề phụ H2/H3', passed: false, text: 'Sử dụng ##' });
+    }
+
+    // 5. Featured Image or Block Image (15 pts)
+    const featuredImg = articleForm.image;
+    const blockImg = firstBlock ? firstBlock.image : '';
+    const hasImages = (featuredImg && featuredImg.trim().length > 0) || (blockImg && blockImg.trim().length > 0);
+    if (hasImages) {
+      score += 15;
+      scoreDetails.push({ label: 'Hình ảnh được thiết lập', passed: true, text: 'Đạt' });
+    } else {
+      scoreDetails.push({ label: 'Thiếu hình ảnh bài viết', passed: false, text: 'Thêm ảnh' });
+    }
+
+    // 6. Referral Link / Outbound Link (10 pts)
+    const refLink = firstBlock ? firstBlock.refLink : '';
+    const hasLink = refLink && refLink.trim().length > 0;
+    if (hasLink) {
+      score += 10;
+      scoreDetails.push({ label: 'Có liên kết sản phẩm', passed: true, text: 'Đạt' });
+    } else {
+      scoreDetails.push({ label: 'Thiếu liên kết sản phẩm', passed: false, text: 'Thêm link' });
+    }
+
+    // 7. Keyword in Title and Content (10 pts)
+    let keywordFound = false;
+    let mainKeyword = 'N/A';
+    if (titleLen > 0 && wordCount > 0) {
+      const titleWords = articleForm.title.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+      if (titleWords.length > 0) {
+        mainKeyword = titleWords[0];
+        if (contentText.toLowerCase().includes(mainKeyword)) {
+          keywordFound = true;
+        }
+      }
+    }
+    if (keywordFound) {
+      score += 10;
+      scoreDetails.push({ label: `Từ khóa "${mainKeyword}" có trong thân bài`, passed: true, text: 'Khớp' });
+    } else {
+      scoreDetails.push({ label: 'Mật độ từ khóa', passed: false, text: 'Không trùng' });
+    }
+
+    return {
+      score: Math.min(score, 100),
+      details: scoreDetails
+    };
+  }, [articleForm]);
+
   // Sync subcategory selection when category changes
   useEffect(() => {
     if (isEditing) {
@@ -729,6 +833,65 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
             <div className="border-b border-slate-100 pb-3">
               <h3 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">Editorial Content</h3>
               <p className="text-[10px] text-slate-400 mt-0.5">Enter review content, images, and referral link.</p>
+            </div>
+
+            {/* Real-time SEO Analyzer Panel */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-3 text-left">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">Trình đánh giá SEO thời gian thực</h4>
+                    <p className="text-[10px] text-slate-400">Tối ưu hóa các tiêu chí để tăng khả năng hiển thị bài viết trên công cụ tìm kiếm.</p>
+                  </div>
+                </div>
+                <div>
+                  <span className={`inline-flex items-center justify-center font-mono font-bold text-xs px-2.5 py-1 rounded-full ${
+                    seoAnalysis.score >= 80 ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60' :
+                    seoAnalysis.score >= 50 ? 'bg-amber-50 text-amber-600 border border-amber-200/60' :
+                    'bg-rose-50 text-rose-600 border border-rose-200/60'
+                  }`}>
+                    {seoAnalysis.score}% SEO
+                  </span>
+                </div>
+              </div>
+              
+              {/* Progress bar */}
+              <div className="w-full bg-slate-200/80 h-2 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-500 ease-out ${
+                    seoAnalysis.score >= 80 ? 'bg-emerald-500' :
+                    seoAnalysis.score >= 50 ? 'bg-amber-500' :
+                    'bg-rose-500'
+                  }`} 
+                  style={{ width: `${seoAnalysis.score}%` }}
+                ></div>
+              </div>
+
+              {/* Checklist details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-2.5 border-t border-slate-200/60">
+                {seoAnalysis.details.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-[10px] p-2 bg-white border border-slate-100 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {item.passed ? (
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      )}
+                      <span className={`truncate ${item.passed ? 'text-slate-700 font-semibold' : 'text-slate-400 font-medium'}`}>
+                        {item.label}
+                      </span>
+                    </div>
+                    <span className={`shrink-0 font-mono text-[9px] px-1.5 py-0.5 rounded font-bold ml-1 ${
+                      item.passed ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {item.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {articleForm.blocks && articleForm.blocks.length > 0 ? (
