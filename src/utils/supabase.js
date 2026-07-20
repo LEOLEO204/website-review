@@ -14,6 +14,14 @@ export const SUPABASE_SQL_SCRIPT = `-- SQL Setup not required for SQLite. It is 
 // Sync arrays (articles, products, deals, categories)
 export const syncArrayToSupabase = async (table, localArray) => {
   try {
+    if (!sessionStorage.getItem('wc_admin_session')) {
+      return; // Silently skip for non-admin visitors
+    }
+  } catch (e) {
+    return;
+  }
+
+  try {
     if (!Array.isArray(localArray)) return;
 
     const res = await fetch('/api/sync-array', {
@@ -38,6 +46,14 @@ export const syncArrayToSupabase = async (table, localArray) => {
 // Sync configuration objects (menu, layout)
 export const syncConfigToSupabase = async (table, configData) => {
   try {
+    if (!sessionStorage.getItem('wc_admin_session')) {
+      return; // Silently skip for non-admin visitors
+    }
+  } catch (e) {
+    return;
+  }
+
+  try {
     const res = await fetch('/api/sync-config', {
       method: 'POST',
       headers: {
@@ -59,6 +75,14 @@ export const syncConfigToSupabase = async (table, configData) => {
 
 // Perform initial migration of existing LocalStorage data to the local database
 export const syncAllLocalToSupabase = async (secureStorage) => {
+  try {
+    if (!sessionStorage.getItem('wc_admin_session')) {
+      return; // Silently skip for non-admin visitors
+    }
+  } catch (e) {
+    return;
+  }
+
   console.log("[Local API Sync] Syncing local data to VPS SQLite...");
 
   // Fetch local data

@@ -1,5 +1,5 @@
 import { secureStorage } from './utils/security';
-import { getSupabaseClient } from './utils/supabase';
+import { getSupabaseClient, syncArrayToSupabase } from './utils/supabase';
 
 const localStorage = {
   getItem(key) {
@@ -598,19 +598,22 @@ export const db = {
       
       const data = await res.json();
       
+      // Mark database as initialized from VPS so we never run auto-seeding again
+      localStorage.setItem("wc_articles_seeded_v5", "true");
+      
       // 1. Sync Categories
-      if (data.categories && data.categories.length > 0) {
+      if (Array.isArray(data.categories)) {
         localStorage.setItem('wc_categories', JSON.stringify(data.categories));
       }
 
       // 2. Sync Articles
-      if (data.articles && data.articles.length > 0) {
+      if (Array.isArray(data.articles)) {
         localStorage.setItem('wc_articles', JSON.stringify(data.articles));
         localStorage.setItem('review_articles', JSON.stringify(data.articles));
       }
 
       // 3. Sync Products
-      if (data.products && data.products.length > 0) {
+      if (Array.isArray(data.products)) {
         const mappedProds = data.products.map(p => ({
           ...p,
           image: p.imageUrl || p.image || '',
@@ -621,7 +624,7 @@ export const db = {
       }
 
       // 4. Sync Deals
-      if (data.deals && data.deals.length > 0) {
+      if (Array.isArray(data.deals)) {
         localStorage.setItem('wc_deals', JSON.stringify(data.deals));
       }
 
@@ -636,7 +639,7 @@ export const db = {
       }
 
       // 7. Sync Registered Users
-      if (data.users && data.users.length > 0) {
+      if (Array.isArray(data.users)) {
         localStorage.setItem('wc_registered_users', JSON.stringify(data.users));
       }
 
@@ -832,134 +835,139 @@ export const db = {
     }
 
     // Ensure every subcategory has exactly 3 articles for testing
+    // ONLY run if the database has never been seeded before
     try {
-      let currentArticles = [];
-      const saved = localStorage.getItem('review_articles') || localStorage.getItem('wc_articles');
-      if (saved) {
-        currentArticles = JSON.parse(saved);
-      }
-      if (!Array.isArray(currentArticles)) {
-        currentArticles = [];
-      }
+      const isFirstTimeSeeded = localStorage.getItem("wc_articles_seeded_v5");
+      if (!isFirstTimeSeeded) {
+        localStorage.setItem("wc_articles_seeded_v5", "true");
+        
+        let currentArticles = [];
+        const saved = localStorage.getItem('review_articles') || localStorage.getItem('wc_articles');
+        if (saved) {
+          currentArticles = JSON.parse(saved);
+        }
+        if (!Array.isArray(currentArticles)) {
+          currentArticles = [];
+        }
 
-      const originalLength = currentArticles.length;
+        const originalLength = currentArticles.length;
 
-      // 1. Deduplicate by ID to clean up any duplicate seed articles
-      const uniqueMap = new Map();
-      let hasDuplicates = false;
-      currentArticles.forEach(art => {
-        if (!art.id) return;
-        if (uniqueMap.has(art.id)) {
-          hasDuplicates = true;
-          const existing = uniqueMap.get(art.id);
-          // Keep the one that is modified (does not start with default seeded title)
-          const isExistingSeeded = existing.title && existing.title.startsWith('The 3 Best');
-          const isNewSeeded = art.title && art.title.startsWith('The 3 Best');
-          if (isExistingSeeded && !isNewSeeded) {
+        // 1. Deduplicate by ID to clean up any duplicate seed articles
+        const uniqueMap = new Map();
+        let hasDuplicates = false;
+        currentArticles.forEach(art => {
+          if (!art.id) return;
+          if (uniqueMap.has(art.id)) {
+            hasDuplicates = true;
+            const existing = uniqueMap.get(art.id);
+            const isExistingSeeded = existing.title && existing.title.startsWith('The 3 Best');
+            const isNewSeeded = art.title && art.title.startsWith('The 3 Best');
+            if (isExistingSeeded && !isNewSeeded) {
+              uniqueMap.set(art.id, art);
+            }
+          } else {
             uniqueMap.set(art.id, art);
           }
-        } else {
-          uniqueMap.set(art.id, art);
-        }
-      });
-      currentArticles = Array.from(uniqueMap.values());
+        });
+        currentArticles = Array.from(uniqueMap.values());
 
-      const counts = {};
-      currentArticles.forEach(art => {
-        const key = `${(art.category || '').toLowerCase().trim()}|${(art.subCategory || '').toLowerCase().trim()}`;
-        counts[key] = (counts[key] || 0) + 1;
-      });
+        const counts = {};
+        currentArticles.forEach(art => {
+          const key = `${(art.category || '').toLowerCase().trim()}|${(art.subCategory || '').toLowerCase().trim()}`;
+          counts[key] = (counts[key] || 0) + 1;
+        });
 
-      // Find the maximum numeric ID to prevent clashes
-      let maxId = 9000;
-      currentArticles.forEach(art => {
-        if (art.id && art.id.startsWith('POST-')) {
-          const num = parseInt(art.id.split('-')[1]);
-          if (!isNaN(num) && num > maxId) {
-            maxId = num;
-          }
-        }
-      });
-      let idCounter = maxId;
-
-      const generated = [];
-
-      initialCategories.forEach(cat => {
-        const subList = cat.subcategories || [];
-        subList.forEach(sub => {
-          const key = `${cat.name.toLowerCase().trim()}|${sub.toLowerCase().trim()}`;
-          const existingCount = counts[key] || 0;
-          const needed = 3 - existingCount;
-
-          // Look up template configurations
-          const templates = subcategoryTemplates[sub] || [
-            { title: `The 3 Best ${sub} of 2026 (Pick #1)`, keyword: sub, mainImgIdx: 0, blockImgIdx: 1 },
-            { title: `The 3 Best ${sub} of 2026 (Pick #2)`, keyword: sub, mainImgIdx: 1, blockImgIdx: 2 },
-            { title: `The 3 Best ${sub} of 2026 (Pick #3)`, keyword: sub, mainImgIdx: 2, blockImgIdx: 3 }
-          ];
-
-          for (let i = 1; i <= needed; i++) {
-            idCounter++;
-            const id = `POST-${idCounter}`;
-            
-            // Get template or fallback
-            const templateIndex = ((i + existingCount) - 1) % templates.length;
-            const template = templates[templateIndex];
-            
-            const title = template.title || `The 3 Best ${sub} of 2026 (Pick #${i + existingCount})`;
-            const keyword = template.keyword || sub;
-
-            const slug = title
-              .toLowerCase()
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '')
-              .replace(/đ/g, 'd')
-              .replace(/[^a-z0-9]+/g, '-')
-              .replace(/(^-|-$)/g, '');
-            
-            // Choose image list based on category
-            const imgList = categoryImages[cat.id] || genericImages;
-            const mainImgIdx = template.mainImgIdx ?? (templateIndex % imgList.length);
-            const blockImgIdx = template.blockImgIdx ?? ((templateIndex + 1) % imgList.length);
-            
-            const articleImage = imgList[mainImgIdx % imgList.length];
-            const blockImage = imgList[blockImgIdx % imgList.length];
-
-            const textBlockValue = `## Why you should trust us\n\nWe spent over 40 hours researching and testing the best ${sub} on the market to find the ones that deliver the highest value, durability, and performance.\n\nOur editor's review covers all the critical features you need to consider before making a purchase.`;
-            
-            generated.push({
-              id,
-              title,
-              slug,
-              category: cat.name,
-              subCategory: sub,
-              categoryId: cat.id,
-              status: 'Published',
-              author: ['Staff Writer', 'Alice Smith', 'Bob Johnson'][templateIndex % 3],
-              image: articleImage,
-              intro: `Looking for the absolute best ${sub.toLowerCase()}? We've tested and reviewed the top options for you in this comprehensive guide.`,
-              date: new Date(Date.now() - (i * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
-              blocks: [
-                {
-                  id: `block-${id}-1`,
-                  type: 'text',
-                  value: textBlockValue,
-                  image: blockImage,
-                  refLink: `https://www.amazon.com/dp/B08X17X${idCounter}`,
-                  ctaTitle: `Top Choice: The Premium ${keyword}`,
-                  ctaDesc: `This outstanding ${keyword.toLowerCase()} offers peak performance, top-tier build quality, and has been highly rated by our editors after extensive tests.`
-                }
-              ],
-              clicks: 0
-            });
+        // Find the maximum numeric ID to prevent clashes
+        let maxId = 9000;
+        currentArticles.forEach(art => {
+          if (art.id && art.id.startsWith('POST-')) {
+            const num = parseInt(art.id.split('-')[1]);
+            if (!isNaN(num) && num > maxId) {
+              maxId = num;
+            }
           }
         });
-      });
+        let idCounter = maxId;
 
-      if (generated.length > 0 || hasDuplicates || currentArticles.length !== originalLength) {
-        const merged = [...currentArticles, ...generated];
-        localStorage.setItem('review_articles', JSON.stringify(merged));
-        localStorage.setItem('wc_articles', JSON.stringify(merged));
+        const generated = [];
+
+        initialCategories.forEach(cat => {
+          const subList = cat.subcategories || [];
+          subList.forEach(sub => {
+            const key = `${cat.name.toLowerCase().trim()}|${sub.toLowerCase().trim()}`;
+            const existingCount = counts[key] || 0;
+            const needed = 3 - existingCount;
+
+            // Look up template configurations
+            const templates = subcategoryTemplates[sub] || [
+              { title: `The 3 Best ${sub} of 2026 (Pick #1)`, keyword: sub, mainImgIdx: 0, blockImgIdx: 1 },
+              { title: `The 3 Best ${sub} of 2026 (Pick #2)`, keyword: sub, mainImgIdx: 1, blockImgIdx: 2 },
+              { title: `The 3 Best ${sub} of 2026 (Pick #3)`, keyword: sub, mainImgIdx: 2, blockImgIdx: 3 }
+            ];
+
+            for (let i = 1; i <= needed; i++) {
+              idCounter++;
+              const id = `POST-${idCounter}`;
+              
+              // Get template or fallback
+              const templateIndex = ((i + existingCount) - 1) % templates.length;
+              const template = templates[templateIndex];
+              
+              const title = template.title || `The 3 Best ${sub} of 2026 (Pick #${i + existingCount})`;
+              const keyword = template.keyword || sub;
+
+              const slug = title
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)/g, '');
+              
+              // Choose image list based on category
+              const imgList = categoryImages[cat.id] || genericImages;
+              const mainImgIdx = template.mainImgIdx ?? (templateIndex % imgList.length);
+              const blockImgIdx = template.blockImgIdx ?? ((templateIndex + 1) % imgList.length);
+              
+              const articleImage = imgList[mainImgIdx % imgList.length];
+              const blockImage = imgList[blockImgIdx % imgList.length];
+
+              const textBlockValue = `## Why you should trust us\n\nWe spent over 40 hours researching and testing the best ${sub} on the market to find the ones that deliver the highest value, durability, and performance.\n\nOur editor's review covers all the critical features you need to consider before making a purchase.`;
+              
+              generated.push({
+                id,
+                title,
+                slug,
+                category: cat.name,
+                subCategory: sub,
+                categoryId: cat.id,
+                status: 'Published',
+                author: ['Staff Writer', 'Alice Smith', 'Bob Johnson'][templateIndex % 3],
+                image: articleImage,
+                intro: `Looking for the absolute best ${sub.toLowerCase()}? We've tested and reviewed the top options for you in this comprehensive guide.`,
+                date: new Date(Date.now() - (i * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
+                blocks: [
+                  {
+                    id: `block-${id}-1`,
+                    type: 'text',
+                    value: textBlockValue,
+                    image: blockImage,
+                    refLink: `https://www.amazon.com/dp/B08X17X${idCounter}`,
+                    ctaTitle: `Top Choice: The Premium ${keyword}`,
+                    ctaDesc: `This outstanding ${keyword.toLowerCase()} offers peak performance, top-tier build quality, and has been highly rated by our editors after extensive tests.`
+                  }
+                ],
+                clicks: 0
+              });
+            }
+          });
+        });
+
+        if (generated.length > 0 || hasDuplicates || currentArticles.length !== originalLength) {
+          const merged = [...currentArticles, ...generated];
+          localStorage.setItem('review_articles', JSON.stringify(merged));
+          localStorage.setItem('wc_articles', JSON.stringify(merged));
+        }
       }
     } catch (e) {
       console.error("Error auto-populating subcategory test articles:", e);
@@ -983,6 +991,7 @@ export const db = {
       categories.push(cat);
     }
     localStorage.setItem("wc_categories", JSON.stringify(categories));
+    syncArrayToSupabase('wc_categories', categories);
     return categories;
   },
 
@@ -990,6 +999,7 @@ export const db = {
     categoriesCache = null;
     const categories = this.getCategories().filter(c => c.id !== id);
     localStorage.setItem("wc_categories", JSON.stringify(categories));
+    syncArrayToSupabase('wc_categories', categories);
     return categories;
   },
 
@@ -1223,6 +1233,7 @@ export const db = {
     }
     localStorage.setItem("review_products", JSON.stringify(products));
     localStorage.setItem("wc_products", JSON.stringify(products));
+    syncArrayToSupabase('wc_products', products);
     return products;
   },
 
@@ -1231,6 +1242,7 @@ export const db = {
     const products = this.getProducts().filter(p => p.id !== id);
     localStorage.setItem("review_products", JSON.stringify(products));
     localStorage.setItem("wc_products", JSON.stringify(products));
+    syncArrayToSupabase('wc_products', products);
     return products;
   },
 
@@ -1366,6 +1378,7 @@ export const db = {
     });
     localStorage.setItem("review_articles", JSON.stringify(articles));
     localStorage.setItem("wc_articles", JSON.stringify(articles));
+    syncArrayToSupabase('wc_articles', articles);
     return articles;
   },
 
@@ -1374,6 +1387,7 @@ export const db = {
     const articles = this.getArticles().filter(a => a.id !== id);
     localStorage.setItem("review_articles", JSON.stringify(articles));
     localStorage.setItem("wc_articles", JSON.stringify(articles));
+    syncArrayToSupabase('wc_articles', articles);
     return articles;
   },
 
@@ -1399,6 +1413,7 @@ export const db = {
       deals.push(deal);
     }
     localStorage.setItem("wc_deals", JSON.stringify(deals));
+    syncArrayToSupabase('wc_deals', deals);
     return deals;
   },
 
@@ -1406,6 +1421,7 @@ export const db = {
     dealsCache = null;
     const deals = this.getDeals().filter(d => d.id !== id);
     localStorage.setItem("wc_deals", JSON.stringify(deals));
+    syncArrayToSupabase('wc_deals', deals);
     return deals;
   },
 

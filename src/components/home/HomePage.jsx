@@ -28,6 +28,9 @@ const isValidImageUrl = (url) => {
 };
 
 const getArticleImage = (art) => {
+  if (!art) return "";
+  if (isValidImageUrl(art.image)) return art.image.trim();
+  if (isValidImageUrl(art.imageUrl)) return art.imageUrl.trim();
   return "";
 };
 

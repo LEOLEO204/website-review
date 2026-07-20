@@ -73,16 +73,31 @@ def deploy_to_vps():
         print(f"Ensuring remote directory {TARGET_DIR} exists...")
         ssh.exec_command(f"mkdir -p {TARGET_DIR}")
         
-        # Clear existing files in the target directory to avoid stale assets
-        print("Cleaning target directory on VPS...")
-        ssh.exec_command(f"rm -rf {TARGET_DIR}/*")
+        # Clear existing files in the target directory to avoid stale assets, excluding server and uploads
+        print("Cleaning target directory on VPS (excluding server and uploads)...")
+        ssh.exec_command(f"find {TARGET_DIR} -mindepth 1 -maxdepth 1 ! -name 'server' ! -name 'uploads' -exec rm -rf {{}} +")
         
+        # Ensure server directory exists
+        print("Ensuring remote server directory exists...")
+        ssh.exec_command(f"mkdir -p {TARGET_DIR}/server")
+
         # 2. Upload files using SFTP
         print("Uploading build files via SFTP...")
         sftp = ssh.open_sftp()
         upload_directory_sftp(sftp, "dist", TARGET_DIR)
+        
+        print("Uploading server backend files via SFTP...")
+        upload_directory_sftp(sftp, "server", f"{TARGET_DIR}/server")
         sftp.close()
         print("File upload completed!")
+
+        # Run npm install if needed and restart node server on VPS
+        print("Running npm install and restarting server via PM2...")
+        stdin, stdout, stderr = ssh.exec_command(f"cd {TARGET_DIR}/server && [ -d node_modules ] || npm install")
+        stdout.channel.recv_exit_status()
+        
+        ssh.exec_command("pm2 restart reviewsmart-api")
+        print("Backend server successfully restarted via PM2.")
         
         # 3. Setup Nginx
         print("\n==========================================")
@@ -111,6 +126,15 @@ def deploy_to_vps():
 
     location / {{
         try_files $uri $uri/ /index.html;
+    }}
+
+    location /api/ {{
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
     }}
 
     gzip on;
