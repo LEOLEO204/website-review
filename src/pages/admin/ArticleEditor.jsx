@@ -363,8 +363,16 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     }
 
     // 6. Paragraph length limit (Conciseness) (10 pts)
-    // Check if paragraphs are short (under 400 chars)
-    const longParagraphs = paragraphs.filter(p => !p.startsWith('#') && p.length > 400);
+    // Ignore list blocks from being counted as single long paragraphs. Only check individual line length.
+    const longParagraphs = paragraphs.filter(p => {
+      if (p.startsWith('#')) return false;
+      const lines = p.split('\n').map(l => l.trim());
+      const isList = lines.some(line => /^\s*([\*\+\-]|([0-9]+\.))\s+/.test(line));
+      if (isList) {
+        return lines.some(line => line.length > 400);
+      }
+      return p.length > 400;
+    });
     if (paragraphs.length > 0 && longParagraphs.length === 0) {
       score += 10;
       scoreDetails.push({ label: 'Đoạn văn ngắn gọn (<= 4 dòng)', passed: true, text: 'Đạt' });

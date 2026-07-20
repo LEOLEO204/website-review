@@ -47,7 +47,7 @@ def upload_directory_sftp(sftp, local_dir, remote_dir):
         pass  # folder already exists
         
     for item in os.listdir(local_dir):
-        if item == 'node_modules':
+        if item in ('node_modules', 'database.sqlite', 'backups', 'logs') or item.endswith('.sqlite'):
             continue
         local_path = os.path.join(local_dir, item)
         remote_path = os.path.join(remote_dir, item).replace('\\', '/')
