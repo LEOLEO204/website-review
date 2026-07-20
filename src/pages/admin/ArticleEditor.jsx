@@ -395,11 +395,8 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     // 8. Word Count & On-page Depth (10 pts)
     const words = contentText.trim().split(/\s+/).filter(w => w.length > 0);
     const wordCount = words.length;
-    if (wordCount >= 600) {
+    if (wordCount >= 300) {
       score += 10;
-      scoreDetails.push({ label: 'Tổng số từ (Chuẩn SEO >= 600 từ)', passed: true, text: `${wordCount} từ` });
-    } else if (wordCount >= 300) {
-      score += 6;
       scoreDetails.push({ label: 'Tổng số từ (Tối thiểu từ 300 từ)', passed: true, text: `${wordCount} từ` });
     } else {
       scoreDetails.push({ label: 'Bài viết chưa sâu sắc', passed: false, text: `${wordCount}/300 từ` });
