@@ -269,7 +269,9 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     "Tech",
     "Baby & Kid",
     "Style",
-    "Gifts"
+    "Gifts",
+    "Web Hosting & Software",
+    "Sports & Outdoors"
   ];
 
   const currentSubCats = menuData[articleForm.category] || [];

@@ -40,7 +40,9 @@ export default function ProductDatabase() {
     "Tech": ["Computers & Laptops", "Headphones", "Phones", "TVs", "Smart Home", "Cables & Accessories"],
     "Baby & Kid": ["Strollers", "Car Seats", "Toys", "Diapering", "Nursery"],
     "Style": ["Shoes", "Clothing", "Socks", "Activewear"],
-    "Gifts": ["For Her", "For Him", "For Kids", "Under $50", "Wirecutter Store"]
+    "Gifts": ["For Her", "For Him", "For Kids", "Under $50", "Wirecutter Store"],
+    "Web Hosting & Software": ["Web Hosting", "Software & SaaS"],
+    "Sports & Outdoors": ["Outdoor Recreation", "Athletic & Fitness"]
   };
 
   // Form State
