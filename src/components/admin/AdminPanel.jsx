@@ -215,22 +215,28 @@ export default function AdminPanel({ isAdminActive, setIsAdminActive }) {
   const hasNumber = /[0-9]/.test(passwordVal);
   const hasSpecial = /[^A-Za-z0-9]/.test(passwordVal);
 
-  // Check if username is already taken
-  const isUsernameTaken = (() => {
+  const [isUsernameTaken, setIsUsernameTaken] = useState(false);
+
+  useEffect(() => {
+    if (!isRegister) return;
     const trimmed = usernameVal.trim().toLowerCase();
-    if (!trimmed) return false;
-    let users = [];
-    try {
-      users = JSON.parse(localStorage.getItem('wc_registered_users')) || [];
-    } catch (e) {
-      users = [];
+    if (!trimmed) {
+      setIsUsernameTaken(false);
+      return;
     }
-    // Also include default admin account check
-    if (!users.some(u => u.username === 'admin')) {
-      users.push({ username: 'admin', password: 'admin', role: 'admin' });
-    }
-    return users.some(u => u.username === trimmed);
-  })();
+
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/check-username/${trimmed}`);
+        const data = await res.json();
+        setIsUsernameTaken(data.taken);
+      } catch (e) {
+        console.warn("Failed to check username availability:", e);
+      }
+    }, 400);
+
+    return () => clearTimeout(delayDebounce);
+  }, [usernameVal, isRegister]);
 
   const isRegistrationFormValid = 
     usernameVal.trim().length > 0 && 
@@ -301,38 +307,27 @@ export default function AdminPanel({ isAdminActive, setIsAdminActive }) {
     }
   };
 
-  const handleLoginSubmit = (username, password) => {
+  const handleLoginSubmit = async (username, password) => {
     username = username.trim().toLowerCase();
-    
-    // Retrieve registered users from localStorage
-    let users = [];
+    setAuthError('');
+    setAuthSuccess('');
+
     try {
-      users = JSON.parse(localStorage.getItem('wc_registered_users')) || [];
-    } catch (e) {
-      users = [];
-    }
-    
-    // Seed default admin account if empty
-    if (!users.some(u => u.username === 'admin')) {
-      users.push({ username: 'admin', password: 'admin', role: 'admin' });
-      localStorage.setItem('wc_registered_users', JSON.stringify(users));
-      try {
-        syncArrayToSupabase('wc_registered_users', users);
-      } catch (e) {
-        console.error("Failed to sync seeded admin to Supabase:", e);
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Đăng nhập thất bại.');
       }
-    }
-    
-    const user = users.find(u => u.username === username && u.password === password);
-    if (user) {
-      const session = {
-        username: user.username,
-        role: user.role || 'admin',
-        token: `JWT-SECURE-${Math.random().toString(36).substring(2, 15)}`,
-        loginTime: Date.now()
-      };
-      sessionStorage.setItem('wc_admin_session', JSON.stringify(session));
-      setAdminUser(session);
+
+      sessionStorage.setItem('wc_admin_session', JSON.stringify(data.session));
+      setAdminUser(data.session);
       setIsAdminActive(true);
       setAuthError('');
       setAuthSuccess('Authenticated successfully!');
@@ -344,12 +339,12 @@ export default function AdminPanel({ isAdminActive, setIsAdminActive }) {
         localStorage.removeItem('wc_saved_username');
         localStorage.removeItem('wc_saved_password');
       }
-    } else {
-      setAuthError('Invalid username or password.');
+    } catch (err) {
+      setAuthError(err.message);
     }
   };
 
-  const handleRegisterSubmit = (username, password, confirmPassword, enteredCode) => {
+  const handleRegisterSubmit = async (username, password, confirmPassword, enteredCode) => {
     username = username.trim().toLowerCase();
     if (!username || !password) {
       setAuthError('All fields are required.');
@@ -387,41 +382,38 @@ export default function AdminPanel({ isAdminActive, setIsAdminActive }) {
       return;
     }
     
-    let users = [];
-    try {
-      users = JSON.parse(localStorage.getItem('wc_registered_users')) || [];
-    } catch (e) {
-      users = [];
-    }
-    
-    if (!users.some(u => u.username === 'admin')) {
-      users.push({ username: 'admin', password: 'admin', role: 'admin' });
-    }
-
-    if (users.some(u => u.username === username)) {
-      setAuthError('Username is already registered.');
-      return;
-    }
-
-    users.push({ username, password, role: 'admin' });
-    localStorage.setItem('wc_registered_users', JSON.stringify(users));
-    try {
-      syncArrayToSupabase('wc_registered_users', users);
-    } catch (e) {
-      console.error("Failed to sync registered user to Supabase:", e);
-    }
-    
     setAuthError('');
-    setAuthSuccess('Account registered successfully! Please log in.');
-    setIsRegister(false);
+    setAuthSuccess('Đang xử lý đăng ký...');
 
-    // Reset code and password state
-    setVerificationCode('');
-    setCodeSentAt(null);
-    setCountdown(0);
-    setPasswordVal('');
-    setConfirmPasswordVal('');
-    setUsernameVal('');
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password, role: 'admin' })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Đăng ký thất bại.');
+      }
+
+      setAuthError('');
+      setAuthSuccess('Account registered successfully! Please log in.');
+      setIsRegister(false);
+
+      // Reset code and password state
+      setVerificationCode('');
+      setCodeSentAt(null);
+      setCountdown(0);
+      setPasswordVal('');
+      setConfirmPasswordVal('');
+      setUsernameVal('');
+    } catch (err) {
+      setAuthSuccess('');
+      setAuthError(err.message);
+    }
   };
 
   if (!adminUser) {

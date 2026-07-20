@@ -47,6 +47,8 @@ def upload_directory_sftp(sftp, local_dir, remote_dir):
         pass  # folder already exists
         
     for item in os.listdir(local_dir):
+        if item == 'node_modules':
+            continue
         local_path = os.path.join(local_dir, item)
         remote_path = os.path.join(remote_dir, item).replace('\\', '/')
         if os.path.isdir(local_path):
@@ -91,9 +93,9 @@ def deploy_to_vps():
         sftp.close()
         print("File upload completed!")
 
-        # Run npm install if needed and restart node server on VPS
+        # Run npm install and restart node server on VPS
         print("Running npm install and restarting server via PM2...")
-        stdin, stdout, stderr = ssh.exec_command(f"cd {TARGET_DIR}/server && [ -d node_modules ] || npm install")
+        stdin, stdout, stderr = ssh.exec_command(f"cd {TARGET_DIR}/server && npm install --production")
         stdout.channel.recv_exit_status()
         
         ssh.exec_command("pm2 restart reviewsmart-api")
@@ -135,6 +137,7 @@ def deploy_to_vps():
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
+        client_max_body_size 50M;
     }}
 
     gzip on;

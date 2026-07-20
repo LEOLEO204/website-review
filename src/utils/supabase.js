@@ -11,6 +11,9 @@ export const getSupabaseClient = () => {
 // SQL setup script mock
 export const SUPABASE_SQL_SCRIPT = `-- SQL Setup not required for SQLite. It is created automatically.`;
 
+// Secure Client-to-Server System API Token
+export const API_SECURITY_TOKEN = 'Bearer reviewsmart_secure_sys_token_2026_xyz';
+
 // Sync arrays (articles, products, deals, categories)
 export const syncArrayToSupabase = async (table, localArray) => {
   try {
@@ -27,7 +30,8 @@ export const syncArrayToSupabase = async (table, localArray) => {
     const res = await fetch('/api/sync-array', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': API_SECURITY_TOKEN
       },
       body: JSON.stringify({ table, data: localArray })
     });
@@ -57,7 +61,8 @@ export const syncConfigToSupabase = async (table, configData) => {
     const res = await fetch('/api/sync-config', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': API_SECURITY_TOKEN
       },
       body: JSON.stringify({ table, data: configData })
     });
@@ -138,7 +143,8 @@ export const uploadImageToSupabase = async (fileOrBase64) => {
   const res = await fetch('/api/upload', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Authorization': API_SECURITY_TOKEN
     },
     body: JSON.stringify({ image: base64String })
   });

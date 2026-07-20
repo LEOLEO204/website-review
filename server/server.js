@@ -3,25 +3,103 @@ const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const rateLimit = require('express-rate-limit');
+
+// 1. Logger System (Error Tracking & Audit Logs)
+const logDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
+
+const writeLog = (level, message) => {
+  const today = new Date().toISOString().split('T')[0];
+  const logFile = path.join(logDir, `server_${today}.log`);
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}\n`;
+  fs.appendFileSync(logFile, logMessage);
+  console.log(logMessage.trim());
+};
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Rate limiting (DDoS & Spam protection)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 500, // Limit each IP to 500 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes.' }
+});
+
 // Enable wide body size limit for base64 images upload
 app.use(cors());
+app.use('/api/', apiLimiter);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// 2. Auth & Permissions Token Security Middleware
+const API_SECURITY_TOKEN = 'reviewsmart_secure_sys_token_2026_xyz';
+
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token || token !== API_SECURITY_TOKEN) {
+    writeLog('warning', `Unauthorized API access attempt from IP: ${req.ip} to endpoint: ${req.originalUrl}`);
+    return res.status(403).json({ error: 'Forbidden: Invalid API Security Token' });
+  }
+  next();
+};
 
 // Database Initialization
 const dbPath = path.join(__dirname, 'database.sqlite');
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
-    console.error('Error connecting to SQLite database:', err.message);
+    writeLog('error', `Error connecting to SQLite database: ${err.message}`);
   } else {
-    console.log('Connected to SQLite database at:', dbPath);
+    writeLog('info', `Connected to SQLite database at: ${dbPath}`);
     createTables();
   }
 });
+
+// 3. Availability & Recovery: Automated Backup Manager
+const backupDir = path.join(__dirname, 'backups');
+if (!fs.existsSync(backupDir)) {
+  fs.mkdirSync(backupDir, { recursive: true });
+}
+
+const runDatabaseBackup = () => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const backupPath = path.join(backupDir, `db_backup_${today}.sqlite`);
+    
+    if (fs.existsSync(dbPath)) {
+      fs.copyFileSync(dbPath, backupPath);
+      writeLog('info', `Database backup successfully saved to: ${backupPath}`);
+      
+      // Retain only last 7 daily backups
+      const files = fs.readdirSync(backupDir)
+        .filter(f => f.startsWith('db_backup_') && f.endsWith('.sqlite'))
+        .map(f => ({ name: f, time: fs.statSync(path.join(backupDir, f)).mtime.getTime() }))
+        .sort((a, b) => b.time - a.time);
+        
+      if (files.length > 7) {
+        const filesToDelete = files.slice(7);
+        filesToDelete.forEach(f => {
+          fs.unlinkSync(path.join(backupDir, f.name));
+          writeLog('info', `Deleted old database backup: ${f.name}`);
+        });
+      }
+    }
+  } catch (err) {
+    writeLog('error', `Automated database backup failed: ${err.message}`);
+  }
+};
+
+// Run database backup once immediately on start, and every 24 hours
+runDatabaseBackup();
+setInterval(runDatabaseBackup, 24 * 60 * 60 * 1000);
 
 function createTables() {
   db.serialize(() => {
@@ -112,7 +190,16 @@ function createTables() {
       username TEXT PRIMARY KEY,
       password TEXT NOT NULL,
       role TEXT DEFAULT 'admin'
-    )`);
+    )`, (err) => {
+      if (!err) {
+        db.get("SELECT COUNT(*) as count FROM wc_registered_users", [], (err, row) => {
+          if (!err && row && row.count === 0) {
+            db.run("INSERT INTO wc_registered_users (username, password, role) VALUES ('admin', 'admin', 'admin')");
+            writeLog('info', 'Seeded default admin user into database.');
+          }
+        });
+      }
+    });
   });
 }
 
@@ -161,7 +248,15 @@ app.get('/api/sync-down', (req, res) => {
                 
                 db.all("SELECT * FROM wc_registered_users", [], (err, users) => {
                   if (err) return res.status(500).json({ error: err.message });
-                  data.users = users;
+                  
+                  // Security protection: Only return credentials list if client sends the valid authorization token
+                  const authHeader = req.headers['authorization'];
+                  const token = authHeader && authHeader.split(' ')[1];
+                  if (token === API_SECURITY_TOKEN) {
+                    data.users = users;
+                  } else {
+                    data.users = [];
+                  }
                   
                   return res.json(data);
                 });
@@ -189,7 +284,7 @@ const queueDbOperation = (opFn) => {
 };
 
 // 2. Sync Array (Bulk Upsert/Replace table data)
-app.post('/api/sync-array', (req, res) => {
+app.post('/api/sync-array', authenticateToken, (req, res) => {
   const { table, data } = req.body;
   if (!table || !Array.isArray(data)) {
     return res.status(400).json({ error: 'Invalid parameters. Need table and data array.' });
@@ -301,7 +396,7 @@ app.post('/api/sync-array', (req, res) => {
 });
 
 // 3. Sync Config (Mega Menu or Homepage Layout)
-app.post('/api/sync-config', (req, res) => {
+app.post('/api/sync-config', authenticateToken, (req, res) => {
   const { table, data } = req.body;
   if (!table || !data) {
     return res.status(400).json({ error: 'Invalid parameters. Need table and config data.' });
@@ -321,7 +416,7 @@ app.post('/api/sync-config', (req, res) => {
 });
 
 // 4. Local Image Upload (stores base64 to VPS disk)
-app.post('/api/upload', (req, res) => {
+app.post('/api/upload', authenticateToken, (req, res) => {
   const { image } = req.body;
   if (!image) {
     return res.status(400).json({ error: 'No image data provided' });
@@ -357,7 +452,67 @@ app.post('/api/upload', (req, res) => {
   }
 });
 
+// 5. Secure Authentication Endpoints
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required.' });
+  }
+  
+  db.get("SELECT * FROM wc_registered_users WHERE username = ? AND password = ?", [username.trim().toLowerCase(), password], (err, user) => {
+    if (err) {
+      writeLog('error', `Login query error: ${err.message}`);
+      return res.status(500).json({ error: err.message });
+    }
+    
+    if (user) {
+      const session = {
+        username: user.username,
+        role: user.role || 'admin',
+        token: `JWT-SECURE-${Math.random().toString(36).substring(2, 15)}`,
+        loginTime: Date.now()
+      };
+      writeLog('info', `Successful admin login: ${user.username}`);
+      return res.json({ success: true, session });
+    } else {
+      writeLog('warning', `Failed login attempt for username: ${username}`);
+      return res.status(401).json({ error: 'Invalid username or password.' });
+    }
+  });
+});
+
+app.post('/api/register', (req, res) => {
+  const { username, password, role } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required.' });
+  }
+  
+  const trimmedUser = username.trim().toLowerCase();
+  
+  db.get("SELECT * FROM wc_registered_users WHERE username = ?", [trimmedUser], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (row) return res.status(400).json({ error: 'Username is already taken.' });
+    
+    db.run("INSERT INTO wc_registered_users (username, password, role) VALUES (?, ?, ?)", [trimmedUser, password, role || 'admin'], (insertErr) => {
+      if (insertErr) {
+        writeLog('error', `Failed to register user: ${insertErr.message}`);
+        return res.status(500).json({ error: insertErr.message });
+      }
+      writeLog('info', `Registered new manager user: ${trimmedUser}`);
+      return res.json({ success: true });
+    });
+  });
+});
+
+app.get('/api/check-username/:username', (req, res) => {
+  const username = req.params.username.trim().toLowerCase();
+  db.get("SELECT * FROM wc_registered_users WHERE username = ?", [username], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    return res.json({ taken: !!row });
+  });
+});
+
 // Start Server
 app.listen(PORT, '127.0.0.1', () => {
-  console.log(`ReviewSmart backend running on http://127.0.0.1:${PORT}`);
+  writeLog('info', `ReviewSmart backend running on http://127.0.0.1:${PORT}`);
 });
