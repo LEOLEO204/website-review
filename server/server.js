@@ -290,6 +290,11 @@ app.post('/api/sync-array', authenticateToken, (req, res) => {
     return res.status(400).json({ error: 'Invalid parameters. Need table and data array.' });
   }
 
+  if ((table === 'wc_articles' || table === 'wc_products') && data.length === 0) {
+    writeLog('warning', `Blocked empty sync-up wipe request for table "${table}" to prevent data loss.`);
+    return res.json({ success: true, message: 'Wipe blocked to protect data.' });
+  }
+
   // Define column maps and serializers
   const serializers = {
     wc_categories: (c) => [c.id, c.name, c.active ? 1 : 0, JSON.stringify(c.subcategories || [])],
