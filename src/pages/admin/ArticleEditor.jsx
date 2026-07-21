@@ -285,7 +285,111 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     // Find the editorial text content
     const firstBlock = articleForm.blocks && articleForm.blocks[0];
     const contentText = firstBlock ? firstBlock.value || '' : '';
-    const paragraphs = contentText.split('\n\n').map(p => p.trim()).filter(p => p.length > 0);
+
+    // Detect format (HTML vs Markdown)
+    const isHtml = /<p|h2|h3|div/i.test(contentText);
+    let paragraphs = [];
+    let headings = []; // { level: number, text: string, hasQuestion: boolean }
+    let quoteBoxes = []; // string content
+    let boldCount = 0;
+    let bulletCount = 0;
+    let internalLinks = [];
+    let allLinks = [];
+
+    if (isHtml) {
+      // Extract paragraphs
+      let pMatch;
+      const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+      while ((pMatch = pRegex.exec(contentText)) !== null) {
+        const txt = pMatch[1].replace(/<[^>]+>/g, '').trim();
+        if (txt) paragraphs.push(txt);
+      }
+      
+      // Extract headings
+      let hMatch;
+      const hRegex = /<(h2|h3|h4)[^>]*>([\s\S]*?)<\/\1>/gi;
+      while ((hMatch = hRegex.exec(contentText)) !== null) {
+        const level = parseInt(hMatch[1].substring(1));
+        const text = hMatch[2].replace(/<[^>]+>/g, '').trim();
+        headings.push({
+          level,
+          text,
+          hasQuestion: text.includes('?'),
+          raw: hMatch[0]
+        });
+      }
+
+      // Extract quote boxes
+      let qMatch;
+      const qRegex = /<div\s+[^>]*class=["']quote-box["'][\s\S]*?<p\s+[^>]*class=["']quote-text["'][^>]*>([\s\S]*?)<\/p>/gi;
+      while ((qMatch = qRegex.exec(contentText)) !== null) {
+        quoteBoxes.push(qMatch[1].replace(/<[^>]+>/g, '').trim());
+      }
+      // Fallback for simple class="quote-border" or class="quote-text"
+      if (quoteBoxes.length === 0) {
+        const qRegexFallback = /class=["'](?:quote-text|quote-border|quote-box)["'][^>]*>([\s\S]*?)<\/(?:p|div)>/gi;
+        while ((qMatch = qRegexFallback.exec(contentText)) !== null) {
+          quoteBoxes.push(qMatch[1].replace(/<[^>]+>/g, '').trim());
+        }
+      }
+
+      // Check bold count
+      const boldRegex = /<(strong|b)[^>]*>([\s\S]*?)<\/\1>/gi;
+      boldCount = (contentText.match(boldRegex) || []).length;
+
+      // Check bullet count
+      const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+      bulletCount = (contentText.match(liRegex) || []).length;
+
+      // Extract links
+      let aMatch;
+      const aRegex = /<a\s+[^>]*href=["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
+      while ((aMatch = aRegex.exec(contentText)) !== null) {
+        const href = aMatch[1];
+        const text = aMatch[2].replace(/<[^>]+>/g, '').trim();
+        const isInternal = href.includes('class="link-content"') || contentText.includes(`class="link-content"`) || !(/^(https?:\/\/)?(www\.)?(amazon|homedepot|walmart|ebay)\.com/i.test(href));
+        allLinks.push({ href, text, isInternal });
+        if (isInternal) {
+          internalLinks.push({ href, text });
+        }
+      }
+    } else {
+      // Markdown parser
+      const rawParagraphs = contentText.split('\n\n').map(p => p.trim()).filter(p => p.length > 0);
+      rawParagraphs.forEach(p => {
+        if (p.startsWith('### ')) {
+          const text = p.substring(4).trim();
+          headings.push({ level: 3, text, hasQuestion: text.includes('?'), raw: p });
+        } else if (p.startsWith('## ')) {
+          const text = p.substring(3).trim();
+          headings.push({ level: 2, text, hasQuestion: text.includes('?'), raw: p });
+        } else if (p.startsWith('# ')) {
+          const text = p.substring(2).trim();
+          headings.push({ level: 1, text, hasQuestion: text.includes('?'), raw: p });
+        } else {
+          paragraphs.push(p);
+        }
+      });
+
+      // Check bold count
+      boldCount = (contentText.match(/\*\*.*?\*\*/g) || []).length;
+
+      // Check bullet count
+      bulletCount = (contentText.match(/^\s*([\*\+\-]|([0-9]+\.))\s+/gm) || []).length;
+
+      // Check link count (Markdown style)
+      let aMatch;
+      const aRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+      while ((aMatch = aRegex.exec(contentText)) !== null) {
+        const text = aMatch[1];
+        const href = aMatch[2];
+        const isInternal = !(/^(https?:\/\/)?(www\.)?(amazon|homedepot|walmart|ebay)\.com/i.test(href));
+        allLinks.push({ href, text, isInternal });
+        if (isInternal) {
+          internalLinks.push({ href, text });
+        }
+      }
+    }
 
     // 1. Title Length & Intent (15 pts)
     const titleLen = articleForm.title ? articleForm.title.length : 0;
@@ -300,29 +404,52 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     }
 
     // 2. Heading Level Hierarchy (10 pts)
-    // Extract heading markdown sizes (e.g. ## = 2, ### = 3)
-    const headingLevels = (contentText.match(/^\s*#{1,6}\s+/gm) || []).map(h => h.trim().length);
-    let hierarchyPassed = true;
-    for (let i = 1; i < headingLevels.length; i++) {
-      if (headingLevels[i] - headingLevels[i-1] > 1) {
-        hierarchyPassed = false;
-        break;
+    let headingPassed = false;
+    let headingLabel = 'Cấu trúc heading H2/H3';
+    let headingText = 'Thiếu';
+    if (headings.length > 0) {
+      let hierarchyPassed = true;
+      for (let i = 1; i < headings.length; i++) {
+        if (headings[i].level - headings[i-1].level > 1) {
+          hierarchyPassed = false;
+          break;
+        }
+      }
+      const h2AndH3 = headings.filter(h => h.level === 2 || h.level === 3);
+      const allAreQuestions = h2AndH3.length > 0 && h2AndH3.every(h => h.hasQuestion);
+      const firstH2 = headings.find(h => h.level === 2);
+      const isFirstH2Intro = firstH2 && /(là gì|giới thiệu|what is|introduction)/i.test(firstH2.text);
+      
+      if (!hierarchyPassed) {
+        headingLabel = 'Cấu trúc heading (Bị nhảy cấp)';
+        headingText = 'Nhảy cấp';
+      } else if (isFirstH2Intro) {
+        headingLabel = 'Cấu trúc heading H2/H3';
+        headingText = 'Mở đầu dài';
+      } else if (!allAreQuestions) {
+        headingLabel = 'Cấu trúc heading H2/H3';
+        headingText = 'Thiếu ?';
+      } else {
+        headingPassed = true;
+        headingLabel = 'Cấu trúc heading H2/H3'; // Matches screenshot label
+        headingText = 'Đạt';
+        score += 10;
       }
     }
-    if (headingLevels.length > 0 && hierarchyPassed) {
-      score += 10;
-      scoreDetails.push({ label: 'Cấu trúc heading (Phân cấp logic)', passed: true, text: 'Chuẩn' });
-    } else if (headingLevels.length > 0) {
-      scoreDetails.push({ label: 'Cấu trúc heading (Bị nhảy cấp)', passed: false, text: 'Nhảy cấp' });
-    } else {
-      scoreDetails.push({ label: 'Cấu trúc heading H2/H3', passed: false, text: 'Thiếu' });
-    }
+    scoreDetails.push({ label: headingLabel, passed: headingPassed, text: headingText });
 
     // 3. E-E-A-T Experiential Words (15 pts)
-    // Checks for personal experiential words to filter out generic rewrite feel.
-    const eeatRegex = /(tôi|mình|chúng tôi|trải nghiệm|thực tế|thử nghiệm|đánh giá cá nhân|sử dụng qua|cảm nhận|quan sát)/i;
-    const hasEeat = eeatRegex.test(contentText);
-    if (hasEeat) {
+    const eeatRegex = /(tôi|mình|chúng tôi|trải nghiệm|thực tế|thử nghiệm|đánh giá cá nhân|sử dụng qua|cảm nhận|quan sát|kinh nghiệm của|theo kinh nghiệm)/i;
+    const hasPersonalExp = eeatRegex.test(contentText);
+    const trustSources = [
+      'pubmed', 'jama', 'nejm', 'mayo clinic', 'cleveland clinic', 'who', 
+      'jason fung', 'bikman', 'harvard', 'semrush', 'ahrefs', 'moz', 
+      'google search central', 'world bank', 'imf', 'statista'
+    ];
+    const lowerContent = contentText.toLowerCase();
+    const hasTrustSource = trustSources.some(src => lowerContent.includes(src));
+    const eeatPassed = hasPersonalExp && hasTrustSource;
+    if (eeatPassed) {
       score += 15;
       scoreDetails.push({ label: 'E-E-A-T (Trải nghiệm cá nhân độc bản)', passed: true, text: 'Đạt E-E-A-T' });
     } else {
@@ -330,76 +457,114 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     }
 
     // 4. Semantic SEO / AI Overview Answer Snippets (15 pts)
-    // Checks for short direct answers immediately following subheadings for SGE/AEO.
-    let hasAeoSnippet = false;
-    for (let i = 0; i < paragraphs.length; i++) {
-      const p = paragraphs[i];
-      if ((p.startsWith('##') || p.startsWith('###')) && paragraphs[i+1]) {
-        const nextP = paragraphs[i+1];
-        if (nextP.length > 0 && nextP.length < 250 && /(là|bao gồm|chính là|giúp|tốt nhất|mang lại|kết quả là)/i.test(nextP)) {
-          hasAeoSnippet = true;
-          break;
-        }
-      }
+    const hasQuoteBox = quoteBoxes.length > 0;
+    let quoteLengthPassed = false;
+    if (hasQuoteBox) {
+      quoteLengthPassed = quoteBoxes.some(text => {
+        const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+        return wordCount >= 30 && wordCount <= 70; // 40-60 words target
+      });
     }
-    if (hasAeoSnippet) {
+    const aeoPassed = hasQuoteBox && quoteLengthPassed;
+    if (aeoPassed) {
       score += 15;
       scoreDetails.push({ label: 'Tối ưu AI Search (Câu trả lời trực tiếp)', passed: true, text: 'Đạt Snippet' });
     } else {
       scoreDetails.push({ label: 'Tối ưu AI Search (Thiếu câu trả lời ngắn)', passed: false, text: 'Chưa tối ưu' });
     }
 
-    // 5. Scannability & Formatting (SXO - Bullet points + Bold) (15 pts)
-    const hasBullets = /^\s*([\*\+\-]|([0-9]+\.))\s+/m.test(contentText);
-    const hasBold = /\*\*.*?\*\*/.test(contentText);
-    if (hasBullets && hasBold) {
-      score += 15;
-      scoreDetails.push({ label: 'Định dạng SXO (Bullet points + Bôi đậm)', passed: true, text: 'Dễ quét' });
-    } else if (hasBullets || hasBold) {
-      score += 8;
-      scoreDetails.push({ label: 'Định dạng SXO (Thiếu Bullet/Bôi đậm)', passed: false, text: 'Thiếu định dạng' });
-    } else {
-      scoreDetails.push({ label: 'Thiếu định dạng nổi bật SXO', passed: false, text: 'Văn bản thuần' });
+    // 5. Scannability & Formatting (SXO) (15 pts)
+    const hasBullets = bulletCount > 0;
+    const hasBold = boldCount > 0;
+    const hasExclamation = /!/.test(contentText);
+    
+    // Strip HTML tags for checking raw text double quotes
+    const textOnly = contentText.replace(/<[^>]+>/g, ' ');
+    const hasDoubleQuotes = /"/.test(textOnly);
+    const hasBoldMarkdown = /\*\*/.test(contentText);
+    
+    let hasRawNewlines = false;
+    const pMatches = contentText.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
+    for (const p of pMatches) {
+      if (p.includes('\n') && !p.includes('<br')) {
+        hasRawNewlines = true;
+        break;
+      }
+    }
+    const hasAcademicCitations = /\[\d+\]/.test(contentText);
+    const hasEmojis = /[\uD800-\uDBFF][\uDC00-\uDFFF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDE00-\uDE4F]/g.test(contentText);
+
+    let internalLinksBolded = true;
+    if (isHtml && internalLinks.length > 0) {
+      internalLinksBolded = internalLinks.every(link => {
+        const escapedText = link.text.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const boldLinkRegex = new RegExp(`<(strong|b)[^>]*>\\s*<a[^>]*>${escapedText}</a>\\s*</\\1>|<a[^>]*>\\s*<(strong|b)[^>]*>${escapedText}</\\3>\\s*</a>|class=["'][^"']*(font-bold|bold|link-content)[^"']*["']`, 'i');
+        return boldLinkRegex.test(contentText);
+      });
     }
 
-    // 6. Paragraph length limit (Conciseness) (10 pts)
-    // Ignore list blocks from being counted as single long paragraphs. Only check individual line length.
-    const longParagraphs = paragraphs.filter(p => {
-      if (p.startsWith('#')) return false;
-      const lines = p.split('\n').map(l => l.trim());
-      const isList = lines.some(line => /^\s*([\*\+\-]|([0-9]+\.))\s+/.test(line));
-      if (isList) {
-        return lines.some(line => line.length > 400);
+    const forbiddenPassed = !hasExclamation && !hasDoubleQuotes && !hasBoldMarkdown && !hasRawNewlines && !hasAcademicCitations && !hasEmojis;
+    const sxoPassed = hasBullets && hasBold && internalLinksBolded && forbiddenPassed;
+    
+    let sxoLabel = 'Thiếu định dạng nổi bật SXO';
+    let sxoText = 'Văn bản thuần';
+    
+    if (sxoPassed) {
+      score += 15;
+      sxoLabel = 'Định dạng SXO (Bullet points + Bôi đậm)';
+      sxoText = 'Dễ quét';
+    } else {
+      if (!hasBullets || !hasBold) {
+        sxoLabel = 'Thiếu định dạng nổi bật SXO';
+        sxoText = 'Văn bản thuần';
+      } else if (!internalLinksBolded) {
+        sxoLabel = 'Thiếu định dạng nổi bật SXO';
+        sxoText = 'Link thường';
+      } else {
+        sxoLabel = 'Thiếu định dạng nổi bật SXO';
+        sxoText = 'Ký tự cấm';
       }
-      return p.length > 400;
-    });
-    if (paragraphs.length > 0 && longParagraphs.length === 0) {
+    }
+    scoreDetails.push({ label: sxoLabel, passed: sxoPassed, text: sxoText });
+
+    // 6. Paragraph length limit (Conciseness) (10 pts)
+    const longParagraphs = paragraphs.filter(p => p.length > 400);
+    const paragraphPassed = paragraphs.length > 0 && longParagraphs.length === 0;
+    if (paragraphPassed) {
       score += 10;
       scoreDetails.push({ label: 'Đoạn văn ngắn gọn (<= 4 dòng)', passed: true, text: 'Đạt' });
     } else if (paragraphs.length > 0) {
       scoreDetails.push({ label: 'Có đoạn văn quá dài (> 4 dòng)', passed: false, text: `${longParagraphs.length} đoạn dài` });
     } else {
-      scoreDetails.push({ label: 'Độ dài đoạn văn', passed: false, text: 'Trống' });
+      scoreDetails.push({ label: 'Có đoạn văn quá dài (> 4 dòng)', passed: false, text: 'Trống' });
     }
 
     // 7. SXO & Call To Action (CRO / Conversion) (10 pts)
-    const refLink = firstBlock ? firstBlock.refLink : '';
-    const hasCta = (refLink && refLink.trim().length > 0) || /(mua ngay|click|xem giá|tại đây|buy now|chọn mua|đặt mua|sở hữu ngay)/i.test(contentText);
-    if (hasCta) {
+    const ctaRegex = /(mua ngay|click|xem giá|tại đây|buy now|chọn mua|đặt mua|sở hữu ngay|tải ngay|đăng ký|tư vấn miễn phí)/i;
+    const ctaLinks = allLinks.filter(l => ctaRegex.test(l.text) || ctaRegex.test(l.href));
+    const ctaCount = ctaLinks.length;
+    const ctaPassed = ctaCount >= 1 && ctaCount <= 3;
+    if (ctaPassed) {
       score += 10;
       scoreDetails.push({ label: 'Call to Action (CTA / CRO)', passed: true, text: 'Đạt CRO' });
     } else {
-      scoreDetails.push({ label: 'Thiếu Call to Action / Khối mua', passed: false, text: 'Thiếu CTA' });
+      scoreDetails.push({ 
+        label: ctaCount > 3 ? 'Call to Action (Quá giới hạn 3)' : 'Call to Action (CTA / CRO)', 
+        passed: false, 
+        text: ctaCount > 3 ? `${ctaCount} CTA` : 'Chưa đạt' 
+      });
     }
 
     // 8. Word Count & On-page Depth (10 pts)
-    const words = contentText.trim().split(/\s+/).filter(w => w.length > 0);
+    const textOnlyForWordCount = contentText.replace(/<[^>]+>/g, ' ').trim();
+    const words = textOnlyForWordCount.split(/\s+/).filter(w => w.length > 0);
     const wordCount = words.length;
-    if (wordCount >= 300) {
+    const wordCountPassed = wordCount >= 300;
+    if (wordCountPassed) {
       score += 10;
       scoreDetails.push({ label: 'Tổng số từ (Tối thiểu từ 300 từ)', passed: true, text: `${wordCount} từ` });
     } else {
-      scoreDetails.push({ label: 'Bài viết chưa sâu sắc', passed: false, text: `${wordCount}/300 từ` });
+      scoreDetails.push({ label: 'Tổng số từ (Tối thiểu từ 300 từ)', passed: false, text: `${wordCount}/300 từ` });
     }
 
     return {
