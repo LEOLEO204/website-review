@@ -524,12 +524,12 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     // 5. Scannability & Formatting (SXO) (15 pts)
     const hasBullets = bulletCount > 0;
     const hasBold = boldCount > 0;
-    const hasExclamation = /!/.test(contentText);
-    
-    // Strip HTML tags for checking raw text double quotes
+    // Strip HTML tags for checking raw text/character constraints (avoids matching HTML attributes)
     const textOnly = contentText.replace(/<[^>]+>/g, ' ');
+    
+    const hasExclamation = /!/.test(textOnly);
     const hasDoubleQuotes = /"/.test(textOnly);
-    const hasBoldMarkdown = /\*\*/.test(contentText);
+    const hasBoldMarkdown = /\*\*/.test(textOnly);
     
     let hasRawNewlines = false;
     const pMatches = contentText.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
@@ -539,8 +539,8 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
         break;
       }
     }
-    const hasAcademicCitations = /\[\d+\]/.test(contentText);
-    const hasEmojis = /[\uD800-\uDBFF][\uDC00-\uDFFF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDE00-\uDE4F]/g.test(contentText);
+    const hasAcademicCitations = /\[\d+\]/.test(textOnly);
+    const hasEmojis = /[\uD800-\uDBFF][\uDC00-\uDFFF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDE00-\uDE4F]/g.test(textOnly);
 
     let internalLinksBolded = true;
     if (isHtml && internalLinks.length > 0) {
@@ -553,7 +553,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
 
     // Check for forbidden words (PDF: 100%, tuyệt đối, chắc chắn, đảm bảo, cam kết, tuyệt vời, rất nhiều, đáng kể, thực ra, nói chung là, về cơ bản)
     const forbiddenWordsRegex = /(100%|tuyệt đối|chắc chắn|đảm bảo|cam kết|trị dứt điểm|chữa khỏi hoàn toàn|hết bệnh 100%|thần tốc|siêu hiệu quả|đột phá|cực kỳ|vô cùng|tuyệt vời|lối sống năng động|rất nhiều|đáng kể|thực ra|nói chung là|về cơ bản)/i;
-    const hasForbiddenWords = forbiddenWordsRegex.test(contentText);
+    const hasForbiddenWords = forbiddenWordsRegex.test(textOnly);
 
     const forbiddenPassed = !hasExclamation && !hasDoubleQuotes && !hasBoldMarkdown && !hasRawNewlines && !hasAcademicCitations && !hasEmojis && !hasForbiddenWords;
     const sxoPassed = hasBullets && hasBold && internalLinksBolded && forbiddenPassed;
