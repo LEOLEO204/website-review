@@ -664,6 +664,10 @@ export const db = {
       console.log("[Local API Sync] All database tables successfully updated from VPS SQLite!");
     } catch (e) {
       console.error("[Local API Sync Error] Sync down failed:", e);
+    } finally {
+      if (typeof window !== 'undefined') {
+        window._isInitializingDb = false;
+      }
     }
   },
 
@@ -674,6 +678,9 @@ export const db = {
     categoriesCache = null;
 
     if (!this._syncTriggered) {
+      if (typeof window !== 'undefined') {
+        window._isInitializingDb = true;
+      }
       this._syncTriggered = true;
       this.syncFromSupabase();
     }

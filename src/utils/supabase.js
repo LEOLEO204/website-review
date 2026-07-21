@@ -16,6 +16,10 @@ export const API_SECURITY_TOKEN = 'Bearer reviewsmart_secure_sys_token_2026_xyz'
 
 // Sync arrays (articles, products, deals, categories)
 export const syncArrayToSupabase = async (table, localArray) => {
+  if (typeof window !== 'undefined' && window._isInitializingDb) {
+    console.log(`[Local API Sync] Skipping sync-up for table "${table}" during initialization.`);
+    return;
+  }
   try {
     if (!sessionStorage.getItem('wc_admin_session')) {
       return; // Silently skip for non-admin visitors
@@ -49,6 +53,10 @@ export const syncArrayToSupabase = async (table, localArray) => {
 
 // Sync configuration objects (menu, layout)
 export const syncConfigToSupabase = async (table, configData) => {
+  if (typeof window !== 'undefined' && window._isInitializingDb) {
+    console.log(`[Local API Sync] Skipping sync-up for config "${table}" during initialization.`);
+    return;
+  }
   try {
     if (!sessionStorage.getItem('wc_admin_session')) {
       return; // Silently skip for non-admin visitors
