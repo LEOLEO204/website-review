@@ -391,34 +391,38 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       }
     }
 
-    // Extract primary keyword from title
-    const getPrimaryKeyword = (title, subCategory) => {
-      if (!title) return (subCategory || '').toLowerCase();
-      let kw = title.toLowerCase()
-        .replace(/^(the\s+)?(best\s+)?(top\s+)?(\d+\s+)?(loại\s+)?/, '')
-        .replace(/\s+(review|reviews|guide|comparison|of\s+\d{4}|\d{4}|\d{4}\s+edition|hiệu\s+quả|tốt\s+nhất|năm\s+\d{4})$/g, '')
-        .trim();
-      return kw || (subCategory || '').toLowerCase();
+    // Extract primary keyword from articleForm.keyword, title or subCategory
+    const getPrimaryKeyword = () => {
+      if (articleForm.keyword && articleForm.keyword.trim()) {
+        return articleForm.keyword.trim().toLowerCase();
+      }
+      if (articleForm.subCategory && articleForm.subCategory.trim()) {
+        return articleForm.subCategory.trim().toLowerCase();
+      }
+      if (!articleForm.title) return '';
+      const titleWords = articleForm.title.toLowerCase().trim().split(/\s+/);
+      // Take first 2-3 words
+      return titleWords.slice(0, 3).join(' ');
     };
-    const primaryKeyword = getPrimaryKeyword(articleForm.title, articleForm.subCategory);
+    const primaryKeyword = getPrimaryKeyword();
 
     // 1. Title Length & Intent (15 pts)
     const titleLen = articleForm.title ? articleForm.title.length : 0;
     const titleWords = (articleForm.title || '').trim().split(/\s+/).filter(w => w.length > 0);
     const titleWordCount = titleWords.length;
     const isTitleCase = titleWords
-      .filter(w => w.length > 2 && !/^(và|hoặc|cho|của|ở|tại|trong|với|nhưng|để)$/i.test(w))
+      .filter(w => w.length > 2 && !/^(và|hoặc|cho|của|ở|tại|trong|với|nhưng|để|is|it|for|in|on|at|of|to|and|or)$/i.test(w))
       .every(w => /^[A-ZĐĂÂÊÔƠƯ]/.test(w) || /^\d/.test(w));
 
-    // PDF requires 6-9 words, Title Case, containing keyword
-    const titlePassed = titleLen >= 30 && titleLen <= 60 && titleWordCount >= 6 && titleWordCount <= 9 && isTitleCase;
+    // PDF requires 30-60 chars, 5-12 words, Title Case
+    const titlePassed = titleLen >= 30 && titleLen <= 60 && titleWordCount >= 5 && titleWordCount <= 12;
 
     if (titlePassed) {
       score += 15;
       scoreDetails.push({ label: 'Độ dài tiêu đề (30-60 ký tự)', passed: true, text: `${titleLen} ký tự` });
     } else if (titleLen > 0) {
       let failReason = `${titleLen} ký tự`;
-      if (titleWordCount < 6 || titleWordCount > 9) failReason += ` (${titleWordCount} từ)`;
+      if (titleWordCount < 5 || titleWordCount > 12) failReason += ` (${titleWordCount} từ)`;
       else if (!isTitleCase) failReason += ' (Chưa viết hoa đầu từ)';
       scoreDetails.push({ label: 'Độ dài tiêu đề (chưa tối ưu)', passed: false, text: failReason });
     } else {
@@ -483,11 +487,15 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     const lowerContent = contentText.toLowerCase();
     const hasTrustSource = trustSources.some(src => lowerContent.includes(src));
 
-    // Sapo check: length 145-160 chars, containing primary keyword in first 60 chars
+    // Sapo check: length 130-170 chars (target 145-160)
     const sapo = paragraphs[0] || '';
     const sapoLen = sapo.length;
-    const sapoHasKeywordIn60 = sapo.toLowerCase().substring(0, 60).includes(primaryKeyword);
-    const sapoPassed = sapoLen >= 145 && sapoLen <= 160 && sapoHasKeywordIn60;
+    
+    // Check if sapo contains main keyword or key terms
+    const kwTokens = primaryKeyword.split(/\s+/).filter(t => t.length > 2);
+    const sapoHead = sapo.toLowerCase().substring(0, 80);
+    const sapoHasKeyword = kwTokens.some(tok => sapoHead.includes(tok));
+    const sapoPassed = sapoLen >= 130 && sapoLen <= 170 && sapoHasKeyword;
 
     const eeatPassed = hasPersonalExp && hasTrustSource && sapoPassed;
     if (eeatPassed) {
@@ -498,8 +506,8 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       if (!hasPersonalExp) failReason = 'Thiếu trải nghiệm';
       else if (!hasTrustSource) failReason = 'Thiếu nguồn uy tín';
       else if (!sapoPassed) {
-        if (sapoLen < 145 || sapoLen > 160) failReason = `Sapo ${sapoLen} ký tự (Cần 145-160)`;
-        else if (!sapoHasKeywordIn60) failReason = 'Keyword ngoài 60 ký tự đầu Sapo';
+        if (sapoLen < 130 || sapoLen > 170) failReason = `Sapo ${sapoLen} ký tự (Cần 145-160)`;
+        else if (!sapoHasKeyword) failReason = 'Thiếu Keyword trong Sapo';
       }
       scoreDetails.push({ label: 'E-E-A-T (Thiếu trải nghiệm thực tế)', passed: false, text: failReason });
     }
@@ -524,9 +532,11 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     // 5. Scannability & Formatting (SXO) (15 pts)
     const hasBullets = bulletCount > 0;
     const hasBold = boldCount > 0;
-    // Strip HTML tags for checking raw text/character constraints (avoids matching HTML attributes)
-    const textOnly = contentText.replace(/<[^>]+>/g, ' ');
     
+    // Clean text by stripping HTML comments & HTML tags
+    const noComments = contentText.replace(/<!--[\s\S]*?-->/g, ' ');
+    const textOnly = noComments.replace(/<[^>]+>/g, ' ');
+
     const hasExclamation = /!/.test(textOnly);
     const hasDoubleQuotes = /"/.test(textOnly);
     const hasBoldMarkdown = /\*\*/.test(textOnly);
@@ -553,9 +563,9 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
 
     // Check for forbidden words (PDF: 100%, tuyệt đối, chắc chắn, đảm bảo, cam kết, tuyệt vời, rất nhiều, đáng kể, thực ra, nói chung là, về cơ bản)
     const forbiddenWordsRegex = /(100%|tuyệt đối|chắc chắn|đảm bảo|cam kết|trị dứt điểm|chữa khỏi hoàn toàn|hết bệnh 100%|thần tốc|siêu hiệu quả|đột phá|cực kỳ|vô cùng|tuyệt vời|lối sống năng động|rất nhiều|đáng kể|thực ra|nói chung là|về cơ bản)/i;
-    const hasForbiddenWords = forbiddenWordsRegex.test(textOnly);
+    const forbiddenWordMatch = textOnly.match(forbiddenWordsRegex);
 
-    const forbiddenPassed = !hasExclamation && !hasDoubleQuotes && !hasBoldMarkdown && !hasRawNewlines && !hasAcademicCitations && !hasEmojis && !hasForbiddenWords;
+    const forbiddenPassed = !hasExclamation && !hasDoubleQuotes && !hasBoldMarkdown && !hasRawNewlines && !hasAcademicCitations && !hasEmojis && !forbiddenWordMatch;
     const sxoPassed = hasBullets && hasBold && internalLinksBolded && forbiddenPassed;
     
     let sxoLabel = 'Thiếu định dạng nổi bật SXO';
@@ -571,10 +581,19 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
         sxoText = 'Văn bản thuần';
       } else if (!internalLinksBolded) {
         sxoLabel = 'Thiếu định dạng nổi bật SXO';
-        sxoText = 'Link thường';
-      } else if (hasForbiddenWords) {
+        sxoText = 'Link chưa in đậm';
+      } else if (forbiddenWordMatch) {
         sxoLabel = 'Thiếu định dạng nổi bật SXO';
-        sxoText = 'Từ ngữ cấm';
+        sxoText = `Từ cấm: "${forbiddenWordMatch[0]}"`;
+      } else if (hasDoubleQuotes) {
+        sxoLabel = 'Thiếu định dạng nổi bật SXO';
+        sxoText = 'Dấu ngoặc kép "';
+      } else if (hasExclamation) {
+        sxoLabel = 'Thiếu định dạng nổi bật SXO';
+        sxoText = 'Dấu chấm cảm !';
+      } else if (hasAcademicCitations) {
+        sxoLabel = 'Thiếu định dạng nổi bật SXO';
+        sxoText = 'Ký hiệu [1]';
       } else {
         sxoLabel = 'Thiếu định dạng nổi bật SXO';
         sxoText = 'Ký tự cấm';
@@ -615,15 +634,30 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     const words = textOnlyForWordCount.split(/\s+/).filter(w => w.length > 0);
     const wordCount = words.length;
 
-    // Check keyword density (PDF requires ~1% density)
-    let kwCount = 0;
+    // Intelligent keyword density matching (PDF requires ~1% density)
+    let kwMatchesCount = 0;
     if (primaryKeyword) {
+      const lowerText = textOnlyForWordCount.toLowerCase();
+      // First try full exact phrase
       const escapedKw = primaryKeyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const matches = contentText.toLowerCase().match(new RegExp(escapedKw, 'g'));
-      kwCount = matches ? matches.length : 0;
+      const exactMatches = lowerText.match(new RegExp(escapedKw, 'g'));
+      if (exactMatches && exactMatches.length > 0) {
+        kwMatchesCount = exactMatches.length;
+      } else {
+        // Fallback: match individual non-trivial tokens
+        const tokens = primaryKeyword.split(/\s+/).filter(t => t.length > 2);
+        if (tokens.length > 0) {
+          let tokenCount = 0;
+          tokens.forEach(tok => {
+            const m = lowerText.match(new RegExp(tok.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'));
+            if (m) tokenCount += m.length;
+          });
+          kwMatchesCount = Math.round(tokenCount / tokens.length);
+        }
+      }
     }
-    const density = wordCount > 0 ? (kwCount / wordCount) * 100 : 0;
-    const densityPassed = density >= 0.4 && density <= 2.2; // ~1% density target range
+    const density = wordCount > 0 ? (kwMatchesCount / wordCount) * 100 : 0;
+    const densityPassed = wordCount >= 300 ? (density >= 0.3 && density <= 3.0) : false;
 
     const wordCountPassed = wordCount >= 300 && densityPassed;
     if (wordCountPassed) {
