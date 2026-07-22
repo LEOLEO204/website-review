@@ -223,15 +223,27 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
         headings.push({ level: 2, text, id });
       } else if ((b.type === 'text' || b.type === 'paragraph') && (b.value || b.text)) {
         const val = b.value || b.text;
-        const lines = val.split('\n');
-        lines.forEach(line => {
-          if (line.startsWith('## ') || line.startsWith('### ')) {
-            const level = line.startsWith('## ') ? 2 : 3;
-            const text = line.replace(/^##* /, '').trim();
-            const id = `${text.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${artIdx}`;
-            headings.push({ level, text, id });
+        if (/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i.test(val)) {
+          const hRegex = /<h([23])(?:[^>]*id=["']([^"']+)["'])?[^>]*>([\s\S]*?)<\/h\1>/gi;
+          let match;
+          while ((match = hRegex.exec(val)) !== null) {
+            const level = parseInt(match[1], 10);
+            const rawId = match[2];
+            const innerText = match[3].replace(/<[^>]+>/g, '').trim();
+            const id = rawId || `${innerText.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${artIdx}`;
+            headings.push({ level, text: innerText, id });
           }
-        });
+        } else {
+          const lines = val.split('\n');
+          lines.forEach(line => {
+            if (line.startsWith('## ') || line.startsWith('### ')) {
+              const level = line.startsWith('## ') ? 2 : 3;
+              const text = line.replace(/^##* /, '').trim();
+              const id = `${text.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${artIdx}`;
+              headings.push({ level, text, id });
+            }
+          });
+        }
       }
     });
     return headings;
@@ -315,6 +327,16 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
   };
 
   const renderTextBlock = (value, artIdx) => {
+    if (!value) return null;
+    if (/<[a-z][\s\S]*>/i.test(value)) {
+      return (
+        <div 
+          key={artIdx || Math.random()}
+          className="article-html-content space-y-4 text-slate-800 text-base md:text-lg leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: value }} 
+        />
+      );
+    }
     const paragraphs = value.split('\n\n').filter(p => p.trim());
     return paragraphs.map((p, idx) => {
       if (p.startsWith('## ')) {
