@@ -544,7 +544,10 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     let hasRawNewlines = false;
     const pMatches = contentText.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
     for (const p of pMatches) {
-      if (p.includes('\n') && !p.includes('<br')) {
+      // Strip outer <p> tags and surrounding whitespace
+      const inner = p.replace(/^<p[^>]*>\s*/i, '').replace(/\s*<\/p>$/i, '').trim();
+      // Only flag if there are multiple paragraph breaks (\n\n) inside a single <p> tag without <br>
+      if (/\n\s*\n/.test(inner) && !inner.includes('<br')) {
         hasRawNewlines = true;
         break;
       }
