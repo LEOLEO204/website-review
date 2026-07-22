@@ -74,7 +74,7 @@ const runDatabaseBackup = () => {
     const today = new Date().toISOString().split('T')[0];
     const backupPath = path.join(backupDir, `db_backup_${today}.sqlite`);
     
-    if (fs.existsSync(dbPath)) {
+    if (fs.existsSync(dbPath) && fs.statSync(dbPath).size > 100000) {
       fs.copyFileSync(dbPath, backupPath);
       writeLog('info', `Database backup successfully saved to: ${backupPath}`);
       
