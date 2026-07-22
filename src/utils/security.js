@@ -188,9 +188,9 @@ export const sanitizeInput = (str) => {
   if (typeof str !== 'string') return str;
   return str
     .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '') // Remove script tags
-    .replace(/<[^>]+>/g, '') // Strip all HTML tags
     .replace(/javascript:/gi, '[REDACTED]') // Block script URI
     .replace(/expression\(/gi, '[REDACTED]') // Block CSS expression
+    .replace(/\son[a-z]+\s*=\s*(['"])(.*?)\1/gi, '') // Remove inline event handlers
     .trim();
 };
 
