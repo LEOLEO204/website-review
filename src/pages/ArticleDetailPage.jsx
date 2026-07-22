@@ -149,6 +149,19 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
     setArticle(art || null);
   }, [slug, articlesList, articleContext, navigate, articleId]);
 
+  // Listen for background database synchronization events from VPS SQLite
+  useEffect(() => {
+    const handleDbSynced = () => {
+      const freshList = articleContext?.articles || db.getArticles() || [];
+      const art = freshList.find(a => a.slug === slug || a.id === slug) || db.getArticle(slug);
+      if (art) {
+        setArticle(art);
+      }
+    };
+    window.addEventListener('supabase-db-synced', handleDbSynced);
+    return () => window.removeEventListener('supabase-db-synced', handleDbSynced);
+  }, [slug, articleContext]);
+
   useEffect(() => {
     if (article && article.id) {
       const sessionKey = `viewed_article_${article.id}`;
