@@ -674,8 +674,8 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
                             <div key={block.id || Math.random()} className="space-y-6">
                               {renderTextBlock(block.value || '', artIdx)}
                               {block.image && (
-                                <div className="my-6 rounded-xl overflow-hidden border border-gray-100 shadow-sm max-w-2xl mx-auto">
-                                  <img src={block.image} className="w-full object-cover max-h-[400px]" alt="Editorial image" />
+                                <div className="my-6 rounded-2xl overflow-hidden border border-slate-100 shadow-sm max-w-3xl mx-auto bg-slate-50 flex items-center justify-center p-2">
+                                  <img src={block.image} className="w-full h-auto max-h-[500px] object-contain rounded-xl" alt="Editorial image" />
                                 </div>
                               )}
                               {block.refLink && (
