@@ -193,11 +193,11 @@ export default function CategoryPage() {
           <div className="lg:col-span-3 group text-left">
             <Link to={`/reviews/${featuredArt.slug}`} className="block space-y-3">
               {getArticleImage(featuredArt) && (
-                <div className="bg-slate-100 aspect-[16/10] rounded-lg overflow-hidden flex items-center justify-center border border-slate-100/60 animate-in fade-in duration-200">
+                <div className="bg-slate-50 aspect-[16/10] rounded-lg overflow-hidden flex items-center justify-center border border-slate-100/60 animate-in fade-in duration-200 p-2">
                   <img 
                     src={getArticleImage(featuredArt)} 
                     alt={featuredArt.title} 
-                    className="w-full h-full object-cover group-hover:scale-[1.02] transition duration-500" 
+                    className="w-full h-full object-contain group-hover:scale-[1.02] transition duration-500" 
                   />
                 </div>
               )}
@@ -227,11 +227,11 @@ export default function CategoryPage() {
                 <div className="flex flex-col gap-6">
                   {relatedArts.map(art => (
                     <div key={art.id} className="group flex gap-4 items-start">
-                      <Link to={`/reviews/${art.slug}`} className="w-1/3 aspect-[4/3] bg-slate-100 border border-slate-100/60 rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
+                      <Link to={`/reviews/${art.slug}`} className="w-1/3 aspect-[4/3] bg-slate-50 border border-slate-100/60 rounded-lg overflow-hidden shrink-0 flex items-center justify-center p-1">
                         <img 
                           src={getArticleImage(art)} 
                           alt={art.title} 
-                          className="w-full h-full object-cover group-hover:scale-[1.03] transition duration-300" 
+                          className="w-full h-full object-contain group-hover:scale-[1.03] transition duration-300" 
                         />
                       </Link>
                       <div className="w-2/3 text-left">
