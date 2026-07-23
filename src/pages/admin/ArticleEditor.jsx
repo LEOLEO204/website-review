@@ -618,18 +618,25 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
 
     // 7. SXO & Call To Action (CRO / Conversion) (10 pts)
     const ctaRegex = /(mua ngay|click|xem giá|tại đây|buy now|chọn mua|đặt mua|sở hữu ngay|tải ngay|đăng ký|tư vấn miễn phí)/i;
+    const explicitCtaLinks = allLinks.filter(l => ctaRegex.test(l.text) || ctaRegex.test(l.href));
     const blockLinks = (articleForm.blocks || [])
       .map(b => ({ href: b.refLink || b.buyUrl || b.link || '', text: b.buttonText || b.badge || 'buy now' }))
       .filter(l => l.href);
     if (articleForm.referralLink && articleForm.referralLink.trim()) {
       blockLinks.push({ href: articleForm.referralLink.trim(), text: 'buy now' });
     }
-    const combinedCtaLinks = [...allLinks, ...blockLinks];
-    const ctaLinks = combinedCtaLinks.filter(l => 
-      ctaRegex.test(l.text) || 
-      ctaRegex.test(l.href) || 
-      (l.href && (l.href.includes('affiliate') || l.href.includes('a_aid') || l.href.includes('ref=')))
-    );
+    
+    // Deduplicate CTA links by destination URL so multiple links to same destination count as 1 CTA target
+    const combinedCtaLinks = [...explicitCtaLinks, ...blockLinks];
+    const uniqueCtaUrls = new Set();
+    const ctaLinks = combinedCtaLinks.filter(l => {
+      const urlKey = (l.href || '').trim().toLowerCase();
+      if (!urlKey) return false;
+      if (uniqueCtaUrls.has(urlKey)) return false;
+      uniqueCtaUrls.add(urlKey);
+      return true;
+    });
+
     const ctaCount = ctaLinks.length;
     const ctaPassed = ctaCount >= 1 && ctaCount <= 3;
     if (ctaPassed) {
