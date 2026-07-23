@@ -319,11 +319,11 @@ app.post('/api/sync-array', authenticateToken, (req, res) => {
   };
 
   const queries = {
-    wc_categories: `INSERT INTO wc_categories (id, name, active, subcategories) VALUES (?, ?, ?, ?)`,
-    wc_articles: `INSERT INTO wc_articles (id, title, slug, category, subCategory, categoryId, status, author, authorRole, image, intro, date, isSpotlight, contentHtml, blocks, picks, clicks, createdAt, updatedAt, verifiedPick) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    wc_products: `INSERT INTO wc_products (id, articleId, badge, badgeColor, name, tagline, shortDescription, basePrice, merchant, buyUrl, imageUrl, rating, reviewsCount, pieces, caseType, pros, cons, isEditorPick, affiliateLinks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    wc_deals: `INSERT INTO wc_deals (id, title, dealPrice, originalPrice, discount, merchant, link, imageUrl, categoryId, isEditorPick, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    wc_registered_users: `INSERT INTO wc_registered_users (username, password, role) VALUES (?, ?, ?)`
+    wc_categories: `INSERT OR REPLACE INTO wc_categories (id, name, active, subcategories) VALUES (?, ?, ?, ?)`,
+    wc_articles: `INSERT OR REPLACE INTO wc_articles (id, title, slug, category, subCategory, categoryId, status, author, authorRole, image, intro, date, isSpotlight, contentHtml, blocks, picks, clicks, createdAt, updatedAt, verifiedPick) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    wc_products: `INSERT OR REPLACE INTO wc_products (id, articleId, badge, badgeColor, name, tagline, shortDescription, basePrice, merchant, buyUrl, imageUrl, rating, reviewsCount, pieces, caseType, pros, cons, isEditorPick, affiliateLinks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    wc_deals: `INSERT OR REPLACE INTO wc_deals (id, title, dealPrice, originalPrice, discount, merchant, link, imageUrl, categoryId, isEditorPick, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    wc_registered_users: `INSERT OR REPLACE INTO wc_registered_users (username, password, role) VALUES (?, ?, ?)`
   };
 
   const serializeRow = serializers[table];
@@ -342,16 +342,7 @@ app.post('/api/sync-array', authenticateToken, (req, res) => {
           return res.status(500).json({ error: txErr.message });
         }
 
-        db.run(`DELETE FROM ${table}`, [], (delErr) => {
-          if (delErr) {
-            console.error(`Failed to delete from ${table}:`, delErr.message);
-            db.run("ROLLBACK", () => {
-              rejectQueue(delErr);
-            });
-            return res.status(500).json({ error: delErr.message });
-          }
-
-          const stmt = db.prepare(query);
+        const stmt = db.prepare(query);
           let hasError = false;
           
           for (const item of data) {

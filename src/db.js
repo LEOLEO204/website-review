@@ -685,23 +685,10 @@ export const db = {
       this.syncFromSupabase();
     }
 
-    // Force reset articles to seed clean realistic data matching categories
-    const isNewSeeded = localStorage.getItem("wc_articles_seeded_v4");
-    if (!isNewSeeded) {
-      localStorage.removeItem("wc_articles");
-      localStorage.removeItem("review_articles");
-      localStorage.setItem("wc_articles_seeded_v4", "true");
-    }
-
-    // Force reset/update categories if needed to match the new 9 categories configuration
+    // Force reset/update categories if needed to match the 9 categories configuration
     const existingCats = localStorage.getItem("wc_categories");
     if (!existingCats || JSON.parse(existingCats).length !== 9 || !JSON.stringify(existingCats).includes('"id":"web-hosting-software"') || !JSON.stringify(existingCats).includes('"id":"sports-outdoors"')) {
       localStorage.setItem("wc_categories", JSON.stringify(initialCategories));
-    }
-    
-    // Independent initialization to guarantee presence of each storage key
-    if (!localStorage.getItem("wc_articles") && !localStorage.getItem("review_articles")) {
-      localStorage.setItem("wc_articles", JSON.stringify(initialArticles));
     }
     
     if (!localStorage.getItem("wc_deals")) {
