@@ -49,18 +49,27 @@ export const ProductProvider = ({ children }) => {
     return () => window.removeEventListener('supabase-db-synced', handleSync);
   }, []);
 
+  const isInitialMountRef = React.useRef(true);
+
   useEffect(() => {
-    localStorage.setItem('review_products', JSON.stringify(products));
-    localStorage.setItem('wc_products', JSON.stringify(products));
-    db.invalidateCache();
-    
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+
     if (isIncomingSyncRef.current) {
       isIncomingSyncRef.current = false;
       return;
     }
-    
-    // Synchronize to VPS database
-    syncArrayToSupabase('wc_products', products);
+
+    localStorage.setItem('review_products', JSON.stringify(products));
+    localStorage.setItem('wc_products', JSON.stringify(products));
+    db.invalidateCache();
+
+    if (products && products.length > 0) {
+      // Synchronize to VPS database only if we have valid non-empty products
+      syncArrayToSupabase('wc_products', products);
+    }
   }, [products]);
 
   const addProduct = (product) => {

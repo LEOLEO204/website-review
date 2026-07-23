@@ -83,22 +83,28 @@ export const ArticleProvider = ({ children }) => {
     return () => window.removeEventListener('supabase-db-synced', handleSync);
   }, []);
 
+  const isInitialMountRef = React.useRef(true);
+
   useEffect(() => {
-    localStorage.setItem('review_articles', JSON.stringify(articles));
-    localStorage.setItem('wc_articles', JSON.stringify(articles));
-    db.invalidateCache(); // Ensure db caches are cleared when articles update
-    
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+
     if (isIncomingSyncRef.current) {
       isIncomingSyncRef.current = false;
       return;
     }
-    
-    // Synchronize to VPS database
-    syncArrayToSupabase('wc_articles', articles);
-    
-    // Dispatch sync event with local update flag so other components reload,
-    // but ArticleContext's listener ignores it to prevent loops.
-    window.dispatchEvent(new CustomEvent('supabase-db-synced', { detail: { isLocalUpdate: true } }));
+
+    localStorage.setItem('review_articles', JSON.stringify(articles));
+    localStorage.setItem('wc_articles', JSON.stringify(articles));
+    db.invalidateCache(); // Ensure db caches are cleared when articles update
+
+    if (articles && articles.length > 0) {
+      // Synchronize to VPS database only if we have valid non-empty articles
+      syncArrayToSupabase('wc_articles', articles);
+      window.dispatchEvent(new CustomEvent('supabase-db-synced', { detail: { isLocalUpdate: true } }));
+    }
   }, [articles]);
 
   const generateSlug = (title) => {

@@ -618,18 +618,18 @@ export const db = {
       localStorage.setItem("wc_articles_seeded_v5", "true");
       
       // 1. Sync Categories
-      if (Array.isArray(data.categories)) {
+      if (Array.isArray(data.categories) && data.categories.length > 0) {
         localStorage.setItem('wc_categories', JSON.stringify(data.categories));
       }
 
       // 2. Sync Articles
-      if (Array.isArray(data.articles)) {
+      if (Array.isArray(data.articles) && data.articles.length > 0) {
         localStorage.setItem('wc_articles', JSON.stringify(data.articles));
         localStorage.setItem('review_articles', JSON.stringify(data.articles));
       }
 
       // 3. Sync Products
-      if (Array.isArray(data.products)) {
+      if (Array.isArray(data.products) && data.products.length > 0) {
         const mappedProds = data.products.map(p => ({
           ...p,
           image: p.imageUrl || p.image || '',
