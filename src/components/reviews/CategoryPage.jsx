@@ -71,6 +71,15 @@ export default function CategoryPage() {
   });
 
   useEffect(() => {
+    const categoryName = category ? category.name : mapIdToCategoryName(catId);
+    document.title = `${categoryName} Reviews & Buyer's Guides | ReviewSmart`;
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute('content', `Read hands-on reviews, comparisons, and expert buying advice for ${categoryName} products at ReviewSmart.`);
+    }
+  }, [catId, category]);
+
+  useEffect(() => {
     const handleSync = () => {
       // 1. Find category config from db
       const cats = db.getCategories();

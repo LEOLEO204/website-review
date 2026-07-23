@@ -178,8 +178,86 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
           articleContext.incrementArticleClicks(article.id);
         }
       }
+
+      // Dynamic SEO Title & Meta Description
+      if (article.title) {
+        document.title = `${article.title} | ReviewSmart`;
+      }
+      if (article.intro) {
+        let metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) {
+          metaDesc.setAttribute('content', article.intro.replace(/<[^>]+>/g, '').trim());
+        }
+      }
+
+      // Inject Schema.org Structured Data (JSON-LD)
+      const scriptId = 'json-ld-article-schema';
+      let script = document.getElementById(scriptId);
+      if (!script) {
+        script = document.createElement('script');
+        script.id = scriptId;
+        script.type = 'application/ld+json';
+        document.head.appendChild(script);
+      }
+
+      const articleImg = getArticleImage(article);
+      const schemaData = {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Article",
+            "@id": `https://review.totsystem.com/article/${article.slug || article.id}#article`,
+            "isPartOf": {
+              "@type": "WebPage",
+              "@id": `https://review.totsystem.com/article/${article.slug || article.id}`
+            },
+            "headline": article.title,
+            "description": (article.intro || article.title).replace(/<[^>]+>/g, '').trim(),
+            "image": articleImg ? [articleImg] : [],
+            "datePublished": article.date || article.createdAt,
+            "author": {
+              "@type": "Person",
+              "name": article.author || "Hai Xuyen",
+              "jobTitle": article.authorRole || "Senior Editor"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "ReviewSmart",
+              "url": "https://review.totsystem.com",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://review.totsystem.com/favicon.svg"
+              }
+            }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "@id": `https://review.totsystem.com/article/${article.slug || article.id}#breadcrumb`,
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://review.totsystem.com"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": article.category || "Articles",
+                "item": `https://review.totsystem.com/category/${article.categoryId || 'web-hosting-software'}`
+              },
+              {
+                "@type": "ListItem",
+                "position": 3,
+                "name": article.title
+              }
+            ]
+          }
+        ]
+      };
+      script.textContent = JSON.stringify(schemaData);
     }
-  }, [article?.id, articleContext]);
+  }, [article?.id, articleContext, article]);
 
   const isAdmin = useMemo(() => {
     try {
