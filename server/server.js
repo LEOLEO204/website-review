@@ -407,11 +407,10 @@ app.post('/api/sync-array', authenticateToken, (req, res) => {
           });
         });
       });
+    }).catch((err) => {
+      console.error("Queue operation caught error:", err);
     });
-  }).catch((err) => {
-    console.error("Queue operation caught error:", err);
   });
-});
 
 // 3. Sync Config (Mega Menu or Homepage Layout)
 app.post('/api/sync-config', authenticateToken, (req, res) => {
