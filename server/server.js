@@ -52,8 +52,36 @@ const authenticateToken = (req, res, next) => {
   next();
 };
 
-// Database Initialization
+// 3. Availability & Recovery: Automated Backup Manager & Self-Healing Auto-Restore
+const backupDir = path.join(__dirname, 'backups');
+if (!fs.existsSync(backupDir)) {
+  fs.mkdirSync(backupDir, { recursive: true });
+}
+
+// Database Initialization with Self-Healing Backup Auto-Restore
 const dbPath = path.join(__dirname, 'database.sqlite');
+
+// Auto-heal: If main database is missing or corrupted/empty (<100KB), restore from latest valid backup
+if (!fs.existsSync(dbPath) || fs.statSync(dbPath).size < 100000) {
+  try {
+    if (fs.existsSync(backupDir)) {
+      const validBackups = fs.readdirSync(backupDir)
+        .filter(f => f.startsWith('db_backup_') && f.endsWith('.sqlite'))
+        .map(f => ({ name: f, path: path.join(backupDir, f), size: fs.statSync(path.join(backupDir, f)).size }))
+        .filter(f => f.size > 100000)
+        .sort((a, b) => b.name.localeCompare(a.name));
+        
+      if (validBackups.length > 0) {
+        const latestBackup = validBackups[0];
+        fs.copyFileSync(latestBackup.path, dbPath);
+        writeLog('info', `[Self-Healing System] Auto-restored database from latest backup: ${latestBackup.name} (${latestBackup.size} bytes)`);
+      }
+    }
+  } catch (healErr) {
+    writeLog('error', `[Self-Healing System] Auto-restore error: ${healErr.message}`);
+  }
+}
+
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     writeLog('error', `Error connecting to SQLite database: ${err.message}`);
@@ -62,12 +90,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
     createTables();
   }
 });
-
-// 3. Availability & Recovery: Automated Backup Manager
-const backupDir = path.join(__dirname, 'backups');
-if (!fs.existsSync(backupDir)) {
-  fs.mkdirSync(backupDir, { recursive: true });
-}
 
 const runDatabaseBackup = () => {
   try {
