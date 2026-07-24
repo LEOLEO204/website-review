@@ -2,6 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Google Analytics Internal Traffic Exclusion Guard -->
+    <script>
+      try {
+        if (localStorage.getItem('wc_admin_session') || localStorage.getItem('ignore_analytics') === 'true' || sessionStorage.getItem('wc_admin_session')) {
+          window['ga-disable-G-NEDNJD0Y8Q'] = true;
+          window['ga-disable-GTM-M9FCPXBD'] = true;
+        }
+      } catch (e) {}
+    </script>
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
