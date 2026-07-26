@@ -786,7 +786,7 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
                     <span className="inline-flex items-center justify-center shrink-0 w-4.5 h-4.5 rounded-full bg-slate-200 text-slate-600 font-extrabold text-[10px] mt-0.5">i</span>
                     <div>
                       <span className="font-extrabold text-slate-800 mr-1.5">Affiliate Disclosure:</span>
-                      As an independent review platform and affiliate partner of featured brands, we may earn a small referral commission when you purchase products through links on our site, at no extra cost to you. This helps support our editorial team. <Link to="/about" className="text-indigo-600 hover:text-indigo-800 underline font-bold transition">Learn more</Link>.
+                      As an independent review platform and affiliate partner of featured brands, we may earn a small referral commission when you purchase products through links on our site, at no extra cost to you. This helps support our editorial team.
                     </div>
                   </div>
 
