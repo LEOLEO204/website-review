@@ -491,11 +491,13 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     const sapo = paragraphs[0] || '';
     const sapoLen = sapo.length;
     
-    // Check if sapo contains main keyword or key terms
+    // Check if sapo contains main keyword or key terms and author name
     const kwTokens = primaryKeyword.split(/\s+/).filter(t => t.length > 2);
     const sapoHead = sapo.toLowerCase().substring(0, 80);
     const sapoHasKeyword = kwTokens.some(tok => sapoHead.includes(tok));
-    const sapoPassed = sapoLen >= 130 && sapoLen <= 170 && sapoHasKeyword;
+    const authorName = (articleForm.author || '').trim().toLowerCase();
+    const sapoHasAuthor = !authorName || sapo.toLowerCase().includes(authorName);
+    const sapoPassed = sapoLen >= 130 && sapoLen <= 170 && sapoHasKeyword && sapoHasAuthor;
 
     const eeatPassed = hasPersonalExp && hasTrustSource && sapoPassed;
     if (eeatPassed) {
@@ -508,6 +510,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       else if (!sapoPassed) {
         if (sapoLen < 130 || sapoLen > 170) failReason = `Sapo ${sapoLen} ký tự (Cần 145-160)`;
         else if (!sapoHasKeyword) failReason = 'Thiếu Keyword trong Sapo';
+        else if (!sapoHasAuthor) failReason = 'Thiếu tên Tác giả trong Sapo';
       }
       scoreDetails.push({ label: 'E-E-A-T (Thiếu trải nghiệm thực tế)', passed: false, text: failReason });
     }
