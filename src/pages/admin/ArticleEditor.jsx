@@ -860,13 +860,15 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
         reason: sanitizeInput(b.reason || '')
       }));
 
-    const generatedSlug = articleForm.title
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'd')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+    const generatedSlug = (articleForm.slug && articleForm.slug.trim())
+      ? articleForm.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/(^-|-$)/g, '')
+      : articleForm.title
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/đ/g, 'd')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '');
 
     const originalArticle = editingArticleId ? (articles.find(a => a.id === editingArticleId) || {}) : {};
     const cleanForm = {
@@ -1009,6 +1011,41 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
                   value={articleForm.date}
                   onChange={(e) => setArticleForm(prev => ({ ...prev, date: e.target.value }))}
                 />
+              </div>
+            </div>
+
+            {/* Custom URL Slug Field */}
+            <div className="bg-slate-50/70 p-3.5 rounded-lg border border-slate-200/80 space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                  URL Slug (Đường dẫn thân thiện bài viết)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const auto = articleForm.title
+                      .toLowerCase()
+                      .normalize('NFD')
+                      .replace(/[\u0300-\u036f]/g, '')
+                      .replace(/đ/g, 'd')
+                      .replace(/[^a-z0-9]+/g, '-')
+                      .replace(/(^-|-$)/g, '');
+                    setArticleForm(prev => ({ ...prev, slug: auto }));
+                  }}
+                  className="text-[10px] font-bold text-reviewsmart-brand hover:underline flex items-center gap-1"
+                >
+                  ⚡ Tự động tạo slug từ tiêu đề
+                </button>
+              </div>
+              <IMEInput
+                type="text"
+                className="w-full px-3 py-2 border border-slate-200 rounded text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-800 bg-white transition-all"
+                value={articleForm.slug || ''}
+                onChange={(val) => setArticleForm(prev => ({ ...prev, slug: val }))}
+                placeholder="the-best-cordless-vacuum-cleaners-of-2026"
+              />
+              <div className="text-[10px] text-slate-500 font-mono truncate">
+                🌐 URL Preview: <span className="text-emerald-700 font-semibold select-all">https://review.totsystem.com/reviews/<strong>{articleForm.slug || (articleForm.title ? articleForm.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'your-article-slug')}</strong></span>
               </div>
             </div>
 
@@ -1486,6 +1523,12 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
                                 <span className="bg-slate-50 text-slate-600 px-1.5 py-0.5 rounded border border-slate-150">{art.subCategory}</span>
                               </>
                             )}
+                          </div>
+                          <div className="mt-1.5">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/70 select-all">
+                              <span className="text-slate-400 font-normal">slug:</span>
+                              <strong className="text-slate-700 font-bold">{art.slug || art.id}</strong>
+                            </span>
                           </div>
                         </td>
                         <td className="py-4 px-5 text-center font-bold text-slate-700">
