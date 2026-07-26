@@ -154,8 +154,10 @@ function createTables() {
       clicks INTEGER DEFAULT 0,
       createdAt INTEGER,
       updatedAt TEXT,
-      verifiedPick INTEGER DEFAULT 1
+      verifiedPick INTEGER DEFAULT 1,
+      scheduledAt TEXT
     )`);
+    db.run("ALTER TABLE wc_articles ADD COLUMN scheduledAt TEXT", () => {});
 
     // 3. Products Table
     db.run(`CREATE TABLE IF NOT EXISTS wc_products (
@@ -224,6 +226,29 @@ function createTables() {
     });
   });
 }
+
+createTables();
+
+// Automated Publisher Background Runner: Checks every 60 seconds
+setInterval(() => {
+  const nowISO = new Date().toISOString();
+  const nowShort = nowISO.split('T')[0];
+  db.run(
+    `UPDATE wc_articles 
+     SET status = 'Published' 
+     WHERE status = 'Scheduled' 
+     AND (
+       (scheduledAt IS NOT NULL AND scheduledAt != '' AND scheduledAt <= ?) 
+       OR ((scheduledAt IS NULL OR scheduledAt = '') AND date <= ?)
+     )`,
+    [nowISO, nowShort],
+    function(err) {
+      if (!err && this.changes > 0) {
+        writeLog('info', `[Auto-Publisher] Automatically published ${this.changes} scheduled articles!`);
+      }
+    }
+  );
+}, 60000);
 
 // ----------------------------------------------------
 // API ROUTES
@@ -325,7 +350,7 @@ app.post('/api/sync-array', authenticateToken, (req, res) => {
       a.status || 'Published', a.author, a.authorRole, a.image, a.intro, a.date,
       a.isSpotlight ? 1 : 0, a.contentHtml, JSON.stringify(a.blocks || []),
       JSON.stringify(a.picks || []), a.clicks || 0, a.createdAt, a.updatedAt,
-      a.verifiedPick ? 1 : 0
+      a.verifiedPick ? 1 : 0, a.scheduledAt || ''
     ],
     wc_products: (p) => [
       p.id, p.articleId, p.badge, p.badgeColor, p.name, p.tagline, p.shortDescription,
@@ -342,7 +367,7 @@ app.post('/api/sync-array', authenticateToken, (req, res) => {
 
   const queries = {
     wc_categories: `INSERT OR REPLACE INTO wc_categories (id, name, active, subcategories) VALUES (?, ?, ?, ?)`,
-    wc_articles: `INSERT OR REPLACE INTO wc_articles (id, title, slug, category, subCategory, categoryId, status, author, authorRole, image, intro, date, isSpotlight, contentHtml, blocks, picks, clicks, createdAt, updatedAt, verifiedPick) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    wc_articles: `INSERT OR REPLACE INTO wc_articles (id, title, slug, category, subCategory, categoryId, status, author, authorRole, image, intro, date, isSpotlight, contentHtml, blocks, picks, clicks, createdAt, updatedAt, verifiedPick, scheduledAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     wc_products: `INSERT OR REPLACE INTO wc_products (id, articleId, badge, badgeColor, name, tagline, shortDescription, basePrice, merchant, buyUrl, imageUrl, rating, reviewsCount, pieces, caseType, pros, cons, isEditorPick, affiliateLinks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     wc_deals: `INSERT OR REPLACE INTO wc_deals (id, title, dealPrice, originalPrice, discount, merchant, link, imageUrl, categoryId, isEditorPick, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     wc_registered_users: `INSERT OR REPLACE INTO wc_registered_users (username, password, role) VALUES (?, ?, ?)`

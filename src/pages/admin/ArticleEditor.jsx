@@ -1121,7 +1121,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Author</label>
                 <IMEInput
@@ -1137,7 +1137,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
                 <select
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-800 bg-white transition-all duration-200 cursor-pointer"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-800 bg-white transition-all duration-200 cursor-pointer font-medium"
                   value={articleForm.category}
                   onChange={(e) => setArticleForm(prev => ({ ...prev, category: e.target.value }))}
                 >
@@ -1150,7 +1150,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sub-category</label>
                 <select
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-800 bg-white transition-all duration-200 cursor-pointer"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-800 bg-white transition-all duration-200 cursor-pointer font-medium"
                   value={articleForm.subCategory}
                   onChange={(e) => setArticleForm(prev => ({ ...prev, subCategory: e.target.value }))}
                 >
@@ -1163,7 +1163,41 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
                   )}
                 </select>
               </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Publish Status (Trạng thái bài đăng)</label>
+                <select
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-800 bg-white transition-all duration-200 cursor-pointer"
+                  value={articleForm.status || 'Published'}
+                  onChange={(e) => setArticleForm(prev => ({ ...prev, status: e.target.value }))}
+                >
+                  <option value="Published">🟢 Published (Đăng ngay)</option>
+                  <option value="Draft">🟡 Draft (Bản nháp - Ẩn)</option>
+                  <option value="Scheduled">⏰ Scheduled (Hẹn giờ đăng)</option>
+                </select>
+              </div>
             </div>
+
+            {/* Scheduled Publish Date & Time Picker */}
+            {articleForm.status === 'Scheduled' && (
+              <div className="bg-amber-50/70 border border-amber-200/80 p-3.5 rounded-lg space-y-1 text-left animate-in fade-in duration-200">
+                <label className="block text-[10px] font-extrabold text-amber-800 uppercase tracking-wider">
+                  ⏰ Lịch hẹn giờ xuất bản bài viết (Scheduled Time)
+                </label>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mt-1">
+                  <input
+                    type="datetime-local"
+                    required={articleForm.status === 'Scheduled'}
+                    className="px-3 py-2 border border-amber-300 rounded text-xs font-bold bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    value={articleForm.scheduledAt || ''}
+                    onChange={(e) => setArticleForm(prev => ({ ...prev, scheduledAt: e.target.value }))}
+                  />
+                  <span className="text-[11px] text-amber-700 font-medium">
+                    Bài viết sẽ tự động lên trang chủ khi đến đúng ngày giờ đã hẹn.
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Homepage Pin Configuration */}
             <div className="pt-4 border-t border-slate-100 flex items-center">
@@ -1478,6 +1512,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
                     </th>
                     <th className="py-4 px-5 w-28">Article ID</th>
                     <th className="py-4 px-5 min-w-[320px]">Title & Category</th>
+                    <th className="py-4 px-5 w-36">Status</th>
                     <th className="py-4 px-5 w-24 text-center">Views</th>
                     <th className="py-4 px-5 w-32">Author</th>
                     <th className="py-4 px-5 w-32">Release Date</th>
@@ -1530,6 +1565,26 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
                               <strong className="text-slate-700 font-bold">{art.slug || art.id}</strong>
                             </span>
                           </div>
+                        </td>
+                        <td className="py-4 px-5">
+                          {art.status === 'Scheduled' ? (
+                            <span className="inline-flex flex-col gap-0.5 text-amber-700 bg-amber-50 px-2 py-1 rounded text-[10px] font-bold border border-amber-200/80">
+                              <span>⏰ Scheduled</span>
+                              {art.scheduledAt && (
+                                <span className="text-[9px] font-mono text-amber-600 font-normal">
+                                  {art.scheduledAt.replace('T', ' ')}
+                                </span>
+                              )}
+                            </span>
+                          ) : art.status === 'Draft' ? (
+                            <span className="inline-flex items-center gap-1 text-slate-600 bg-slate-100 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200">
+                              🟡 Draft
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200/80">
+                              🟢 Published
+                            </span>
+                          )}
                         </td>
                         <td className="py-4 px-5 text-center font-bold text-slate-700">
                           {art.clicks || 0} views
