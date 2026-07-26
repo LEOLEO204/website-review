@@ -629,11 +629,11 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
                                   
                                   <div className="md:grid md:grid-cols-5 md:gap-10 mt-6 items-center">
                                     {/* Left column: Product image (width: 2/5) */}
-                                    <div className="md:col-span-2 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center p-4 shadow-sm overflow-hidden">
+                                    <div className="md:col-span-2 rounded-2xl flex items-center justify-center shadow-sm overflow-hidden bg-slate-900 border border-slate-200">
                                       <img 
                                         src={block.image} 
                                         alt={cardTitle} 
-                                        className="object-contain max-h-[380px] w-full mx-auto group-hover:scale-105 transition duration-300" 
+                                        className="object-cover w-full h-full max-h-[360px] group-hover:scale-105 transition duration-300 rounded-2xl" 
                                         onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400'; }}
                                       />
                                     </div>
