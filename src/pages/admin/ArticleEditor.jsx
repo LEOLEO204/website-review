@@ -391,18 +391,18 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       }
     }
 
-    // Extract primary keyword from articleForm.keyword, title or subCategory
+    // Extract primary keyword from articleForm.keyword or title (filtering stop words)
     const getPrimaryKeyword = () => {
       if (articleForm.keyword && articleForm.keyword.trim()) {
         return articleForm.keyword.trim().toLowerCase();
       }
-      if (articleForm.subCategory && articleForm.subCategory.trim()) {
-        return articleForm.subCategory.trim().toLowerCase();
-      }
       if (!articleForm.title) return '';
-      const titleWords = articleForm.title.toLowerCase().trim().split(/\s+/);
-      // Take first 2-3 words
-      return titleWords.slice(0, 3).join(' ');
+      const stopWords = /^(the|best|top|review|reviews|guide|buying|of|for|in|on|and|with|2025|2026|vs|or)$/i;
+      const titleWords = articleForm.title.toLowerCase().trim().split(/\s+/).filter(w => !stopWords.test(w) && w.length > 2);
+      if (titleWords.length >= 2) {
+        return titleWords.slice(0, 3).join(' ');
+      }
+      return titleWords.join(' ') || articleForm.title.toLowerCase().trim();
     };
     const primaryKeyword = getPrimaryKeyword();
 
@@ -452,11 +452,10 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
         return true;
       });
 
-      const firstH2 = headings.find(h => h.level === 2);
-      const isFirstH2Intro = firstH2 && /(là gì|giới thiệu|what is|introduction)/i.test(firstH2.text);
+      const isFirstH2Intro = headings[0] && headings[0].level === 2 && /^(trái cây là gì|what is|giới thiệu|overview)/i.test(headings[0].text);
       
       if (!hierarchyPassed) {
-        headingLabel = 'Cấu trúc heading (Bị nhảy cấp)';
+        headingLabel = 'Cấu trúc heading H2/H3';
         headingText = 'Nhảy cấp';
       } else if (isFirstH2Intro) {
         headingLabel = 'Cấu trúc heading H2/H3';
@@ -477,12 +476,13 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     scoreDetails.push({ label: headingLabel, passed: headingPassed, text: headingText });
 
     // 3. E-E-A-T Experiential Words (15 pts)
-    const eeatRegex = /(tôi|mình|chúng tôi|trải nghiệm|thực tế|thử nghiệm|đánh giá cá nhân|sử dụng qua|cảm nhận|quan sát|kinh nghiệm của|theo kinh nghiệm)/i;
+    const eeatRegex = /(tôi|mình|chúng tôi|trải nghiệm|thực tế|thử nghiệm|đánh giá cá nhân|sử dụng qua|cảm nhận|quan sát|kinh nghiệm của|theo kinh nghiệm|my experience|I tested|in my testing|my hands-on|I observed|my evaluation|I found|my gameplay|testing on my own|my personal|our test|our hands-on)/i;
     const hasPersonalExp = eeatRegex.test(contentText);
     const trustSources = [
       'pubmed', 'jama', 'nejm', 'mayo clinic', 'cleveland clinic', 'who', 
       'jason fung', 'bikman', 'harvard', 'semrush', 'ahrefs', 'moz', 
-      'google search central', 'world bank', 'imf', 'statista'
+      'google search central', 'world bank', 'imf', 'statista',
+      'pc gamer', 'ign', 'tom\'s hardware', 'eurogamer', 'techradar', 'rtings', 'cnet', 'verge'
     ];
     const lowerContent = contentText.toLowerCase();
     const hasTrustSource = trustSources.some(src => lowerContent.includes(src));
