@@ -1,5 +1,5 @@
 import { secureStorage } from './utils/security';
-import { getSupabaseClient, syncArrayToSupabase } from './utils/supabase';
+import { getSupabaseClient, syncArrayToSupabase, deleteRowInSupabase } from './utils/supabase';
 
 const localStorage = {
   getItem(key) {
@@ -1398,10 +1398,10 @@ export const db = {
 
   deleteArticle(id) {
     articlesCache = null;
+    deleteRowInSupabase('wc_articles', id);
     const articles = this.getArticles().filter(a => a.id !== id);
     localStorage.setItem("review_articles", JSON.stringify(articles));
     localStorage.setItem("wc_articles", JSON.stringify(articles));
-    syncArrayToSupabase('wc_articles', articles);
     return articles;
   },
 

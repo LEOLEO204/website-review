@@ -412,7 +412,31 @@ app.post('/api/sync-array', authenticateToken, (req, res) => {
     });
   });
 
-// 3. Sync Config (Mega Menu or Homepage Layout)
+// 3. Delete Row Endpoint
+app.post('/api/delete-row', authenticateToken, (req, res) => {
+  const { table, id } = req.body;
+  const allowedTables = ['wc_articles', 'wc_products', 'wc_categories', 'wc_deals', 'wc_registered_users'];
+  if (!allowedTables.includes(table) || !id) {
+    return res.status(400).json({ error: 'Invalid table or missing id' });
+  }
+
+  queueDbOperation((resolveQueue, rejectQueue) => {
+    db.run(`DELETE FROM ${table} WHERE id = ?`, [id], function(err) {
+      if (err) {
+        console.error(`Failed to delete row from ${table}:`, err.message);
+        rejectQueue(err);
+        return res.status(500).json({ error: err.message });
+      }
+      console.log(`[Local API Delete] Successfully deleted row "${id}" from ${table}`);
+      resolveQueue();
+      res.json({ success: true, deletedId: id });
+    });
+  }).catch((err) => {
+    console.error("Queue operation caught delete error:", err);
+  });
+});
+
+// 4. Sync Config (Mega Menu or Homepage Layout)
 app.post('/api/sync-config', authenticateToken, (req, res) => {
   const { table, data } = req.body;
   if (!table || !data) {

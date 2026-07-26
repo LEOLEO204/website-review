@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { secureStorage } from '../utils/security';
 import { db } from '../db';
-import { syncArrayToSupabase } from '../utils/supabase';
+import { syncArrayToSupabase, deleteRowInSupabase } from '../utils/supabase';
 
 const localStorage = {
   getItem(key) {
@@ -168,6 +168,7 @@ export const ArticleProvider = ({ children }) => {
   };
 
   const deleteArticle = (id) => {
+    deleteRowInSupabase('wc_articles', id);
     setArticles(prev => {
       const filtered = prev.filter(a => a.id !== id);
       

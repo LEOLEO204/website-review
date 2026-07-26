@@ -51,6 +51,40 @@ export const syncArrayToSupabase = async (table, localArray) => {
   }
 };
 
+// Delete row from table on server backend
+export const deleteRowInSupabase = async (table, id) => {
+  if (typeof window !== 'undefined' && window._isInitializingDb) {
+    return;
+  }
+  try {
+    if (!sessionStorage.getItem('wc_admin_session')) {
+      return;
+    }
+  } catch (e) {
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/delete-row', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_SECURITY_TOKEN
+      },
+      body: JSON.stringify({ table, id })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.error || 'Failed to delete row');
+    }
+
+    console.log(`[Local API Delete] Successfully deleted row "${id}" from table "${table}"`);
+  } catch (e) {
+    console.error(`[Local API Delete Error] Failed to delete row "${id}" from table "${table}":`, e);
+  }
+};
+
 // Sync configuration objects (menu, layout)
 export const syncConfigToSupabase = async (table, configData) => {
   if (typeof window !== 'undefined' && window._isInitializingDb) {
