@@ -627,19 +627,19 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
                                     TOP PICK
                                   </div>
                                   
-                                  <div className="md:grid md:grid-cols-3 md:gap-16 mt-6">
-                                    {/* Left column: Product image */}
-                                    <div className="md:col-span-1 bg-white flex items-center justify-center p-4">
+                                  <div className="md:grid md:grid-cols-5 md:gap-10 mt-6 items-center">
+                                    {/* Left column: Product image (width: 2/5) */}
+                                    <div className="md:col-span-2 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center p-4 shadow-sm overflow-hidden">
                                       <img 
                                         src={block.image} 
                                         alt={cardTitle} 
-                                        className="object-contain max-h-[350px] w-full mx-auto"
+                                        className="object-contain max-h-[380px] w-full mx-auto group-hover:scale-105 transition duration-300" 
                                         onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400'; }}
                                       />
                                     </div>
 
-                                    {/* Right column: Product details & Buttons */}
-                                    <div className="md:col-span-2 flex flex-col justify-between mt-8 md:mt-0">
+                                    {/* Right column: Product details & Buttons (width: 3/5) */}
+                                    <div className="md:col-span-3 flex flex-col justify-between mt-8 md:mt-0">
                                       <div>
                                         <div className="flex justify-between items-start mb-4">
                                           <h4 className="font-sans text-slate-900 text-3xl font-bold leading-snug">
