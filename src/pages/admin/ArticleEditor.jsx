@@ -489,11 +489,12 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
 
     // Sapo check: length 130-170 chars (target 145-160)
     const sapo = paragraphs[0] || '';
-    const sapoLen = sapo.length;
+    const sapoText = sapo.replace(/<[^>]+>/g, '').trim();
+    const sapoLen = sapoText.length;
     
     // Check if sapo contains main keyword or key terms and author name
     const kwTokens = primaryKeyword.split(/\s+/).filter(t => t.length > 2);
-    const sapoHead = sapo.toLowerCase().substring(0, 80);
+    const sapoHead = sapoText.toLowerCase().substring(0, 100);
     const sapoHasKeyword = kwTokens.some(tok => sapoHead.includes(tok));
     const authorName = (articleForm.author || '').trim().toLowerCase();
     const sapoHasAuthor = !authorName || sapo.toLowerCase().includes(authorName);
