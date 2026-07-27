@@ -210,7 +210,7 @@ export default function CategoryPage() {
                 {featuredArt.title}
               </h2>
               <p className="text-xs lg:text-sm text-gray-600 font-serif leading-relaxed line-clamp-2">
-                {featuredArt.intro || 'Read our hands-on review to find the absolute best options.'}
+                {(featuredArt.intro || '').replace(/<[^>]+>/g, '').trim() || 'Read our hands-on review to find the absolute best options.'}
               </p>
               <div className="flex items-center space-x-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                 <span>By {featuredArt.author || 'Staff Writer'}</span>
@@ -249,7 +249,7 @@ export default function CategoryPage() {
                           by {art.author || 'Staff Writer'}
                         </div>
                         <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed font-serif mt-1">
-                          {art.intro || 'Read our hands-on review to find the absolute best options.'}
+                          {(art.intro || '').replace(/<[^>]+>/g, '').trim() || 'Read our hands-on review to find the absolute best options.'}
                         </p>
                         <span className="text-[9px] text-gray-400 font-sans font-semibold mt-1 block">
                           Updated {art.date || art.updatedAt || 'recently'}
@@ -301,7 +301,7 @@ export default function CategoryPage() {
                       {art.title}
                     </h3>
                     <p className="text-xs text-gray-600 line-clamp-3 leading-relaxed mb-4">
-                      {art.intro || 'Read our hands-on review to find the absolute best options.'}
+                      {(art.intro || '').replace(/<[^>]+>/g, '').trim() || 'Read our hands-on review to find the absolute best options.'}
                     </p>
                   </div>
                 </Link>

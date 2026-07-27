@@ -353,7 +353,7 @@ export default function HomePage({ triggerAffiliate, searchQuery }) {
                     {displayHeroSpotlight.title}
                   </h2>
                   <p className="text-xs text-gray-600 font-serif leading-relaxed line-clamp-3 mb-3">
-                    {displayHeroSpotlight.intro}
+                    {(displayHeroSpotlight.intro || '').replace(/<[^>]+>/g, '').trim()}
                   </p>
                 </Link>
                 <div className="flex items-center space-x-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -568,7 +568,7 @@ export default function HomePage({ triggerAffiliate, searchQuery }) {
                             {featuredArt.title}
                           </h5>
                           <p className="text-xs lg:text-sm text-gray-600 font-serif leading-relaxed line-clamp-2">
-                            {featuredArt.intro}
+                            {(featuredArt.intro || '').replace(/<[^>]+>/g, '').trim()}
                           </p>
                           <div className="flex items-center space-x-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                             <span>By {featuredArt.author || 'Staff Writer'}</span>
