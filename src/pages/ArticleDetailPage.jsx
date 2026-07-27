@@ -374,11 +374,11 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
           </svg>
         </div>
         <h2 className="text-2xl font-serif font-semibold text-slate-800 mb-3">
-          {article?.status === 'Scheduled' ? '⏰ Bài viết đang chờ đến giờ xuất bản' : 'Article is under editorial review'}
+          {article?.status === 'Scheduled' ? '⏰ Article Scheduled for Publication' : 'Article is under editorial review'}
         </h2>
         <p className="text-slate-500 text-sm leading-relaxed mb-8">
           {article?.status === 'Scheduled' 
-            ? `Bài viết này đã được lên lịch hẹn xuất bản vào ${article.scheduledAt ? article.scheduledAt.replace('T', ' ') : 'thời gian tới'}. Vui lòng quay lại sau!`
+            ? `This review is scheduled to be published on ${article.scheduledAt ? article.scheduledAt.replace('T', ' ') : 'a future date'}. Please check back soon!`
             : 'We are currently testing products and writing this detailed guide. Please check back soon!'}
         </p>
         <a href="/" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-slate-900 hover:bg-slate-800 transition duration-150 shadow-sm">

@@ -181,17 +181,22 @@ def deploy_to_vps():
         
         dns_ok = check_dns()
         if dns_ok:
-            print("Installing and running Certbot for SSL...")
-            # Install certbot
-            ssh.exec_command("apt-get install -y certbot python3-certbot-nginx")
-            # Run certbot to obtain cert
-            stdin, stdout, stderr = ssh.exec_command(f"certbot --nginx -d {DOMAIN} --non-interactive --agree-tos --email webmaster@tot.system.com --redirect")
-            status = stdout.channel.recv_exit_status()
-            if status == 0:
-                print("SSL Certificate installed successfully!")
+            # Check if SSL cert already exists
+            stdin_cert, stdout_cert, _ = ssh.exec_command(f"test -f /etc/letsencrypt/live/{DOMAIN}/fullchain.pem && echo 'EXISTS'")
+            cert_exists = 'EXISTS' in stdout_cert.read().decode('utf-8')
+            
+            if cert_exists:
+                print("SSL Certificate is already active and configured!")
             else:
-                print("Failed to request SSL certificate. See error logs:")
-                print(stderr.read().decode('utf-8'))
+                print("Installing and running Certbot for SSL...")
+                ssh.exec_command("snap install --classic certbot || apt-get install -y certbot python3-certbot-nginx")
+                stdin, stdout, stderr = ssh.exec_command(f"certbot --nginx -d {DOMAIN} --non-interactive --agree-tos --email webmaster@tot.system.com --redirect")
+                status = stdout.channel.recv_exit_status()
+                if status == 0:
+                    print("SSL Certificate installed successfully!")
+                else:
+                    print("Failed to request SSL certificate. See error logs:")
+                    print(stderr.read().decode('utf-8'))
         else:
             print("Skipping Certbot setup because DNS is not pointed to this VPS yet.")
             print(f"Once you point '{DOMAIN}' to '{VPS_IP}', you can secure it by running this command on your VPS:")
