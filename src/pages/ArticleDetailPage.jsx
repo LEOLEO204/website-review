@@ -781,14 +781,11 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
                     />
                   )}
 
-                  {/* Bottom Affiliate Disclosure Banner (Non-Amazon, FTC Compliant) */}
-                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-4 text-xs text-slate-500 leading-relaxed font-sans flex items-start gap-3 mt-10 mb-4 select-none">
-                    <span className="inline-flex items-center justify-center shrink-0 w-4.5 h-4.5 rounded-full bg-slate-200 text-slate-600 font-extrabold text-[10px] mt-0.5">i</span>
-                    <div>
-                      <span className="font-extrabold text-slate-800 mr-1.5">Affiliate Disclosure:</span>
-                      As an independent review platform and affiliate partner of featured brands, we may earn a small referral commission when you purchase products through links on our site, at no extra cost to you. This helps support our editorial team.
-                    </div>
-                  </div>
+                  {/* Bottom Affiliate Disclosure Text (FTC Compliant, Clean Plain Text) */}
+                  <p className="text-xs text-slate-400 leading-relaxed font-sans mt-8 mb-4 select-none italic text-left">
+                    <span className="font-bold text-slate-500 not-italic mr-1">Affiliate Disclosure:</span>
+                    As an independent review platform and affiliate partner of featured brands, we may earn a small referral commission when you purchase products through links on our site, at no extra cost to you. This helps support our editorial team.
+                  </p>
 
                   {/* Horizontal divider line between articles */}
                   {artIdx < sharedArticles.length - 1 && (
