@@ -33,6 +33,9 @@ config = """server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    add_header Content-Security-Policy "upgrade-insecure-requests" always;
+
     listen 443 ssl;
     ssl_certificate /etc/letsencrypt/live/review.totsystem.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/review.totsystem.com/privkey.pem;
