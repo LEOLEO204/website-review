@@ -44,13 +44,10 @@ config = """server {
 }
 
 server {
-    if ($host = review.totsystem.com) {
-        return 301 https://$host$request_uri;
-    }
-
-    listen 80;
-    server_name review.totsystem.com;
-    return 404;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name review.totsystem.com www.review.totsystem.com;
+    return 301 https://review.totsystem.com$request_uri;
 }
 """
 

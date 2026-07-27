@@ -120,9 +120,9 @@ def deploy_to_vps():
             
         # Write Nginx configuration block with full HTTPS and HTTP 301 redirect
         nginx_config = f"""server {{
-    listen 80;
-    listen [::]:80;
-    server_name {DOMAIN};
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name {DOMAIN} www.{DOMAIN};
     return 301 https://$host$request_uri;
 }}
 
