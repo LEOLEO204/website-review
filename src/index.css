@@ -59,6 +59,96 @@ html {
 .text-\[11px\] {
   font-size: 13.2px !important;
 }
+.text-\[12px\] {
+  font-size: 14.4px !important;
+}
+
+/* Modern Comparison Table Styling (Data Table) */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin: 1.75rem 0;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-size: 0.875rem;
+}
+
+.table-header {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+.table-th {
+  padding: 14px 18px !important;
+  font-weight: 800 !important;
+  font-size: 0.825rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border-bottom: 2px solid #1e293b !important;
+  border-right: 1px solid #334155 !important;
+  color: #ffffff !important;
+}
+
+.table-th:last-child {
+  border-right: none !important;
+}
+
+.table-td {
+  padding: 14px 18px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-right: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+}
+
+.table-td:last-child {
+  border-right: none !important;
+}
+
+.row-bg-white {
+  background-color: #ffffff !important;
+}
+
+.row-bg-light {
+  background-color: #f8fafc !important;
+}
+
+.data-table tr:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Featured Snippet Quote Box Styling */
+.quote-box {
+  background-color: #f8fafc;
+  border-left: 4px solid #da3723;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 1.5rem 0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+}
+
+.quote-border {
+  margin: 0;
+  padding: 0;
+}
+
+.quote-text {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #1e293b;
+  font-weight: 500;
+  font-family: Georgia, ui-serif, serif;
+  margin: 0 !important;
+}
 .text-\[13px\] {
   font-size: 15.6px !important;
 }
