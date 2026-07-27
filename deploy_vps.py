@@ -118,10 +118,26 @@ def deploy_to_vps():
             stdout.channel.recv_exit_status()
             print("Nginx installed successfully.")
             
-        # Write Nginx configuration block
+        # Write Nginx configuration block with full HTTPS and HTTP 301 redirect
         nginx_config = f"""server {{
     listen 80;
+    listen [::]:80;
     server_name {DOMAIN};
+    return 301 https://$host$request_uri;
+}}
+
+server {{
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name {DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/{DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{DOMAIN}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    add_header Content-Security-Policy "upgrade-insecure-requests" always;
 
     root {TARGET_DIR};
     index index.html;
@@ -131,13 +147,19 @@ def deploy_to_vps():
     }}
 
     location /api/ {{
-        proxy_pass http://127.0.0.1:5000;
+        proxy_pass http://127.0.0.1:5000/api/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
         client_max_body_size 50M;
+    }}
+
+    location /uploads/ {{
+        alias {TARGET_DIR}/uploads/;
+        expires 7d;
+        add_header Cache-Control "public";
     }}
 
     gzip on;
@@ -188,9 +210,9 @@ def deploy_to_vps():
             if cert_exists:
                 print("SSL Certificate is already active and configured!")
             else:
-                print("Installing and running Certbot for SSL...")
-                ssh.exec_command("snap install --classic certbot || apt-get install -y certbot python3-certbot-nginx")
-                stdin, stdout, stderr = ssh.exec_command(f"certbot --nginx -d {DOMAIN} --non-interactive --agree-tos --email webmaster@tot.system.com --redirect")
+                print("Installing and running Certbot for SSL via snap...")
+                ssh.exec_command("snap install --classic certbot && ln -sf /snap/bin/certbot /usr/bin/certbot")
+                stdin, stdout, stderr = ssh.exec_command(f"/snap/bin/certbot --nginx -d {DOMAIN} --non-interactive --agree-tos --email webmaster@tot.system.com --redirect")
                 status = stdout.channel.recv_exit_status()
                 if status == 0:
                     print("SSL Certificate installed successfully!")
