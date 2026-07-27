@@ -144,6 +144,9 @@ def deploy_to_vps():
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 }}
 """
+        # Remove conflicting gzip.conf if present
+        ssh.exec_command("rm -f /etc/nginx/conf.d/gzip.conf")
+
         # Upload Nginx configuration file
         print("Writing Nginx server block config...")
         # Write local temp config

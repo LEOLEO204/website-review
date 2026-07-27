@@ -611,7 +611,7 @@ export default function HomePage({ triggerAffiliate, searchQuery }) {
                                     by {art.author || 'Staff Writer'}
                                   </div>
                                   <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed font-serif mt-1">
-                                    {art.intro || 'Read our hands-on review to find the absolute best options for your home and lifestyle.'}
+                                    {(art.intro || '').replace(/<[^>]+>/g, '').trim() || 'Read our hands-on review to find the absolute best options for your home and lifestyle.'}
                                   </p>
                                   <span className="text-[9px] text-gray-400 font-sans font-semibold mt-1 block">
                                     {art.date || 'Updated recently'}

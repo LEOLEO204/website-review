@@ -512,9 +512,16 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
                       </h2>
                       
                       {art.intro && art.intro.toLowerCase().trim() !== 'jvjgjgv' && art.intro.toLowerCase().trim() !== 'jv' && (
-                        <p className="text-lg font-serif text-slate-500 leading-relaxed font-light mb-4">
-                          {highlightQuery(art.intro, searchQuery)}
-                        </p>
+                        art.intro.includes('<') ? (
+                          <div 
+                            className="text-lg font-serif text-slate-500 leading-relaxed font-light mb-4 [&_a]:text-indigo-600 [&_a]:underline [&_a]:font-bold"
+                            dangerouslySetInnerHTML={{ __html: art.intro }}
+                          />
+                        ) : (
+                          <p className="text-lg font-serif text-slate-500 leading-relaxed font-light mb-4">
+                            {highlightQuery(art.intro, searchQuery)}
+                          </p>
+                        )
                       )}
 
                       {/* Author info and release date */}
