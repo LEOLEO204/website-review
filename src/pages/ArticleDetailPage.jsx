@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ArticleContext } from '../context/ArticleContext';
 import { ProductContext } from '../context/ProductContext';
-import { db } from '../db';
+import { db, isArticlePublished } from '../db';
 import { uncloakUrl, secureStorage } from '../utils/security';
 import { Edit2, Bookmark } from 'lucide-react';
 import ArticleEditor from './admin/ArticleEditor';
@@ -364,19 +364,22 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
     return () => observer.disconnect();
   }, [headings]);
 
-  if (!article) {
+  const isPublished = isArticlePublished(article);
+  if (!article || (!isPublished && !isAdmin)) {
     return (
       <div className="max-w-xl mx-auto px-6 py-24 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-50 text-amber-600 mb-6">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-50 text-amber-600 mb-6 shadow-sm">
           <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
         <h2 className="text-2xl font-serif font-semibold text-slate-800 mb-3">
-          Article is under editorial review
+          {article?.status === 'Scheduled' ? '⏰ Bài viết đang chờ đến giờ xuất bản' : 'Article is under editorial review'}
         </h2>
         <p className="text-slate-500 text-sm leading-relaxed mb-8">
-          We are currently testing products and writing this detailed guide. Please check back soon!
+          {article?.status === 'Scheduled' 
+            ? `Bài viết này đã được lên lịch hẹn xuất bản vào ${article.scheduledAt ? article.scheduledAt.replace('T', ' ') : 'thời gian tới'}. Vui lòng quay lại sau!`
+            : 'We are currently testing products and writing this detailed guide. Please check back soon!'}
         </p>
         <a href="/" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-slate-900 hover:bg-slate-800 transition duration-150 shadow-sm">
           Back to Home

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../../db';
+import { db, isArticlePublished } from '../../db';
 import { secureStorage } from '../../utils/security';
 
 const removeAccents = (str) => {
@@ -40,7 +40,7 @@ const getArticleImage = (art) => {
 
 export default function HomePage({ triggerAffiliate, searchQuery }) {
   const [articles, setArticles] = useState(() => {
-    const rawArticles = db.getArticles();
+    const rawArticles = (db.getArticles() || []).filter(isArticlePublished);
     let sortedArticles = Array.isArray(rawArticles) ? [...rawArticles] : [];
     sortedArticles.sort((a, b) => {
       const dateA = new Date(a.date || a.updatedAt || 0);

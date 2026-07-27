@@ -1475,3 +1475,19 @@ export const db = {
     categoriesCache = null;
   }
 };
+
+export const isArticlePublished = (art) => {
+  if (!art) return false;
+  // Draft status is always hidden from public views
+  if (art.status === 'Draft') return false;
+  // Scheduled status: check if current time has reached or passed scheduledAt or date
+  if (art.status === 'Scheduled') {
+    if (!art.scheduledAt) return false;
+    const now = new Date();
+    const schedDate = new Date(art.scheduledAt);
+    if (isNaN(schedDate.getTime())) return false;
+    return now >= schedDate;
+  }
+  // Default Published or empty status
+  return true;
+};

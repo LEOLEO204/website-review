@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { db } from '../../db';
+import { db, isArticlePublished } from '../../db';
 import { menuData as staticMenuData } from '../common/menuData';
 
 const isValidImageUrl = (url) => {
@@ -61,7 +61,7 @@ export default function CategoryPage() {
   });
 
   const [articles, setArticles] = useState(() => {
-    let categoryArticles = db.getArticles().filter(a => a.categoryId === catId);
+    let categoryArticles = (db.getArticles() || []).filter(isArticlePublished).filter(a => a.categoryId === catId);
     if (activeSubFilter) {
       return categoryArticles.filter(a => 
         a.subCategory && a.subCategory.toLowerCase() === activeSubFilter.toLowerCase()
