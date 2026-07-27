@@ -488,7 +488,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     const hasTrustSource = trustSources.some(src => lowerContent.includes(src));
 
     // Sapo check: length 130-170 chars (target 145-160)
-    const sapo = paragraphs[0] || '';
+    const sapo = (articleForm.intro && articleForm.intro.trim()) ? articleForm.intro : (paragraphs[0] || '');
     const sapoText = sapo.replace(/<[^>]+>/g, '').trim();
     const sapoLen = sapoText.length;
     
