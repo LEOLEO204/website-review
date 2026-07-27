@@ -63,8 +63,8 @@ html {
   font-size: 14.4px !important;
 }
 
-/* Modern Comparison Table Styling (Data Table) */
-.table-wrapper {
+/* Modern Comparison Table Styling (Data Table & Article Tables) */
+.table-wrapper, .article-container table, .prose table {
   width: 100%;
   overflow-x: auto;
   margin: 1.75rem 0;
@@ -73,7 +73,7 @@ html {
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.05);
 }
 
-.data-table {
+.data-table, table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
@@ -81,12 +81,14 @@ html {
   font-size: 0.875rem;
 }
 
-.table-header {
+thead, tr.table-header, .table-header {
   background-color: #0f172a !important;
   color: #ffffff !important;
 }
 
-.table-th {
+thead th, th.table-th, .table-th {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
   padding: 14px 18px !important;
   font-weight: 800 !important;
   font-size: 0.825rem !important;
@@ -94,23 +96,22 @@ html {
   letter-spacing: 0.05em !important;
   border-bottom: 2px solid #1e293b !important;
   border-right: 1px solid #334155 !important;
-  color: #ffffff !important;
 }
 
-.table-th:last-child {
+thead th:last-child, th.table-th:last-child, .table-th:last-child {
   border-right: none !important;
 }
 
-.table-td {
+tbody td, td.table-td, .table-td {
   padding: 14px 18px !important;
   border-bottom: 1px solid #e2e8f0 !important;
   border-right: 1px solid #e2e8f0 !important;
-  color: #1e293b !important;
-  font-weight: 500 !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
   line-height: 1.5 !important;
 }
 
-.table-td:last-child {
+tbody td:last-child, td.table-td:last-child, .table-td:last-child {
   border-right: none !important;
 }
 
@@ -122,8 +123,12 @@ html {
   background-color: #f8fafc !important;
 }
 
-.data-table tr:hover {
-  background-color: #f1f5f9 !important;
+tbody tr:hover {
+  background-color: #e2e8f0 !important;
+}
+
+thead tr:hover {
+  background-color: #0f172a !important;
 }
 
 /* Featured Snippet Quote Box Styling */
