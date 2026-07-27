@@ -627,12 +627,13 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
                                   
                                   <div className="md:grid md:grid-cols-12 md:gap-8 mt-4 items-center">
                                     {/* Left column: Product image (width: 5/12 = 42%) */}
-                                    <div className="md:col-span-5 rounded-xl flex items-center justify-center shadow-sm overflow-hidden bg-slate-50 border border-slate-200 p-2 w-full h-full min-h-[240px]">
+                                    <div className="md:col-span-5 rounded-xl flex items-center justify-center shadow-sm overflow-hidden bg-white border border-slate-200 p-2 w-full h-full min-h-[260px]">
                                       <img 
                                         src={block.image} 
                                         alt={cardTitle} 
-                                        className="object-contain w-full h-full max-h-[360px] transition duration-300 rounded-lg" 
-                                        style={{ imageRendering: 'crisp-edges', WebkitImageRendering: '-webkit-optimize-contrast' }}
+                                        className="sharp-img object-contain w-full h-full max-h-[380px] transition duration-300 rounded-lg cursor-pointer" 
+                                        onClick={() => window.open(block.image, '_blank')}
+                                        title="Click to view high-resolution full image"
                                         onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400'; }}
                                       />
                                     </div>
