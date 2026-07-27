@@ -632,6 +632,7 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
                                         src={block.image} 
                                         alt={cardTitle} 
                                         className="object-contain w-full h-full max-h-[360px] transition duration-300 rounded-lg" 
+                                        style={{ imageRendering: 'crisp-edges', WebkitImageRendering: '-webkit-optimize-contrast' }}
                                         onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400'; }}
                                       />
                                     </div>
