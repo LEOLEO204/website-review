@@ -616,47 +616,47 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
                                 </div>
 
                                 {/* 2. Render the call-to-action pick card at the bottom */}
-                                <div className="border-2 border-slate-950 rounded-none p-12 mb-16 bg-white relative text-left shadow-md">
+                                <div className="border-2 border-slate-950 rounded-xl p-6 md:p-8 mb-12 bg-white relative text-left shadow-md">
                                   {/* Blue Ribbon Badge */}
                                   <div 
-                                    className="absolute -top-5 left-8 bg-[#5c6ac4] text-white font-sans font-bold text-base uppercase px-6 pr-8 py-2.5 select-none shadow-sm"
+                                    className="absolute -top-4 left-6 bg-[#5c6ac4] text-white font-sans font-bold text-sm uppercase px-5 pr-7 py-2 select-none shadow-sm"
                                     style={{ clipPath: 'polygon(0 0, 92% 0, 100% 50%, 92% 100%, 0 100%)' }}
                                   >
                                     TOP PICK
                                   </div>
                                   
-                                  <div className="md:grid md:grid-cols-5 md:gap-10 mt-6 items-center">
-                                    {/* Left column: Product image (width: 2/5) */}
-                                    <div className="md:col-span-2 rounded-2xl flex items-center justify-center shadow-sm overflow-hidden bg-slate-900 border border-slate-200">
+                                  <div className="md:grid md:grid-cols-12 md:gap-8 mt-4 items-center">
+                                    {/* Left column: Product image (width: 5/12 = 42%) */}
+                                    <div className="md:col-span-5 rounded-xl flex items-center justify-center shadow-sm overflow-hidden bg-slate-50 border border-slate-200 p-2 w-full h-full min-h-[240px]">
                                       <img 
                                         src={block.image} 
                                         alt={cardTitle} 
-                                        className="object-cover w-full h-full max-h-[360px] group-hover:scale-105 transition duration-300 rounded-2xl" 
+                                        className="object-contain w-full h-full max-h-[360px] transition duration-300 rounded-lg" 
                                         onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400'; }}
                                       />
                                     </div>
 
-                                    {/* Right column: Product details & Buttons (width: 3/5) */}
-                                    <div className="md:col-span-3 flex flex-col justify-between mt-8 md:mt-0">
+                                    {/* Right column: Product details & Buttons (width: 7/12 = 58%) */}
+                                    <div className="md:col-span-7 flex flex-col justify-between mt-6 md:mt-0">
                                       <div>
-                                        <div className="flex justify-between items-start mb-4">
-                                          <h4 className="font-sans text-slate-900 text-3xl font-bold leading-snug">
+                                        <div className="flex justify-between items-start mb-3">
+                                          <h4 className="font-sans text-slate-900 text-2xl md:text-3xl font-bold leading-snug">
                                             {highlightQuery(cardTitle, searchQuery)}
                                           </h4>
                                         </div>
                                         
-                                        <p className="text-slate-700 leading-relaxed mb-8 font-sans text-base">
+                                        <p className="text-slate-700 leading-relaxed mb-6 font-sans text-sm md:text-base">
                                           {highlightQuery(cardShortDesc, searchQuery)}
                                         </p>
                                       </div>
 
                                       {/* Buttons stack */}
-                                      <div className="flex flex-col space-y-4 max-w-xl w-full mt-6">
+                                      <div className="flex flex-col space-y-3 max-w-xl w-full mt-4">
                                         <a
                                           href={uncloakUrl(block.refLink) || '#'}
                                           target="_blank"
                                           rel="noopener noreferrer sponsored"
-                                          className="w-full bg-black text-white font-bold py-4 px-6 rounded-lg text-center hover:bg-slate-800 transition-all text-base block font-sans"
+                                          className="w-full bg-black text-white font-bold py-3.5 px-6 rounded-lg text-center hover:bg-slate-800 transition-all text-base block font-sans"
                                         >
                                           Buy Now
                                         </a>
@@ -709,27 +709,27 @@ export default function ArticleDetailPage({ triggerAffiliate, searchQuery }) {
                            return (
                              <div 
                                key={block.id || block.productId || Math.random()} 
-                               className="border-2 border-slate-950 rounded-none p-12 mb-16 bg-white relative text-left shadow-md"
+                               className="border-2 border-slate-950 rounded-xl p-6 md:p-8 mb-12 bg-white relative text-left shadow-md"
                              >
                                {/* Blue Ribbon Badge */}
                                <div 
-                                 className="absolute -top-5 left-8 bg-[#5c6ac4] text-white font-sans font-bold text-base uppercase px-6 pr-8 py-2.5 select-none shadow-sm"
+                                 className="absolute -top-4 left-6 bg-[#5c6ac4] text-white font-sans font-bold text-sm uppercase px-5 pr-7 py-2 select-none shadow-sm"
                                  style={{ clipPath: 'polygon(0 0, 92% 0, 100% 50%, 92% 100%, 0 100%)' }}
                                >
                                  {badgeText}
                                </div>
                                
-                               <div className="md:grid md:grid-cols-3 md:gap-16 mt-6">
-                                 <div className="md:col-span-1 bg-white flex items-center justify-center p-4">
+                               <div className="md:grid md:grid-cols-12 md:gap-8 mt-4 items-center">
+                                 <div className="md:col-span-5 rounded-xl bg-slate-50 flex items-center justify-center p-2 border border-slate-200 w-full h-full min-h-[240px]">
                                    <img 
                                      src={prod.imageUrl || prod.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400'} 
                                      alt={prod.name} 
-                                     className="object-contain max-h-[350px] w-full mx-auto"
+                                     className="object-contain max-h-[360px] w-full mx-auto rounded-lg"
                                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400'; }}
                                    />
                                  </div>
 
-                                 <div className="md:col-span-2 flex flex-col justify-between mt-8 md:mt-0">
+                                 <div className="md:col-span-7 flex flex-col justify-between mt-6 md:mt-0">
                                    <div>
                                      <div className="flex justify-between items-start mb-4">
                                        {(block.title || block.heading || prod.tagline) && (
