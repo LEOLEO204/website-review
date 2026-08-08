@@ -215,8 +215,8 @@ export default function HomePage({ triggerAffiliate, searchQuery }) {
         .filter(Boolean);
     }
 
-    // Fallback if less than 3
-    if (dailyDealsProducts.length < 3) {
+    // Fallback if less than 3 ONLY when no layout config has been saved
+    if (!stored && dailyDealsProducts.length < 3) {
       const needed = 3 - dailyDealsProducts.length;
       const unused = products
         .filter(p => !dailyDealsProducts.some(x => x.name === p.name))
