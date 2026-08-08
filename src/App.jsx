@@ -39,7 +39,7 @@ function AdminModalWrapper({ title, children, onClose }) {
   }, [title]);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl border border-slate-200/80 flex flex-col animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">

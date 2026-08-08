@@ -179,7 +179,7 @@ export default function HomepageLayoutConfig({ onClose }) {
   };
 
   return (
-    <div className="space-y-6 text-left font-sans max-h-[80vh] overflow-y-auto px-2 py-1">
+    <div className="space-y-6 text-left font-sans px-1 py-1">
       <div>
         <h2 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
           <Layout className="text-indigo-600" size={20} />
