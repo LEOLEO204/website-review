@@ -118,7 +118,7 @@ def deploy_to_vps():
             stdout.channel.recv_exit_status()
             print("Nginx installed successfully.")
             
-        # Write Nginx configuration block with full HTTPS and HTTP 301 redirect
+        # Write Nginx configuration block with full HTTPS, HTTP/2, Security Headers, and HTTP 301 redirect
         nginx_config = f"""server {{
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -127,8 +127,8 @@ def deploy_to_vps():
 }}
 
 server {{
-    listen 443 ssl;
-    listen [::]:443 ssl;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name {DOMAIN};
 
     ssl_certificate /etc/letsencrypt/live/{DOMAIN}/fullchain.pem;
@@ -136,14 +136,38 @@ server {{
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
+    # Comprehensive Security Headers (Criterion 38)
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     add_header Content-Security-Policy "upgrade-insecure-requests" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
     root {TARGET_DIR};
     index index.html;
 
     location / {{
         try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+    }}
+
+    location = /index.html {{
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires 0 always;
+    }}
+
+    location = /sitemap.xml {{
+        proxy_pass http://127.0.0.1:5000/sitemap.xml;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }}
+
+    location = /llms.txt {{
+        proxy_pass http://127.0.0.1:5000/llms.txt;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
     }}
 
     location /api/ {{

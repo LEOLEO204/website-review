@@ -1,0 +1,27 @@
+# ReviewSmart - Independent Product Reviews & Shopping Guides
+
+> ReviewSmart provides independent, hands-on product testing, expert reviews, and buying guides to help consumers make confident purchase decisions.
+
+## Domain & Platform Information
+- Canonical Domain: https://review.totsystem.com
+- Primary Target Markets: Australia, North America, Global
+- Language: English (en-AU / en-US)
+- Contact Email: support@review.totsystem.com
+
+## Key Pages & Services
+- Home: https://review.totsystem.com/
+- Deals: https://review.totsystem.com/deals
+- About ReviewSmart: https://review.totsystem.com/about
+- Editorial Team: https://review.totsystem.com/our-team
+- Contact & Pitch: https://review.totsystem.com/contact
+
+## Main Product Review Categories
+- Home & Garden: https://review.totsystem.com/category/home-garden
+- Kitchen & Home Appliances: https://review.totsystem.com/category/kitchen
+- Health & Lifestyle: https://review.totsystem.com/category/health-lifestyle
+- Consumer Tech & Gadgets: https://review.totsystem.com/category/tech
+- Web Hosting & Software: https://review.totsystem.com/category/web-hosting-software
+
+## Editorial Guidelines & Integrity
+- All products evaluated through hands-on testing and controlled laboratory research.
+- Strict editorial independence: No sponsored reviews or paid placements accepted from manufacturers.

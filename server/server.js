@@ -231,23 +231,40 @@ createTables();
 
 // Automated Publisher Background Runner: Checks every 60 seconds
 setInterval(() => {
-  const nowISO = new Date().toISOString();
-  const nowShort = nowISO.split('T')[0];
-  db.run(
-    `UPDATE wc_articles 
-     SET status = 'Published' 
-     WHERE status = 'Scheduled' 
-     AND (
-       (scheduledAt IS NOT NULL AND scheduledAt != '' AND scheduledAt <= ?) 
-       OR ((scheduledAt IS NULL OR scheduledAt = '') AND date <= ?)
-     )`,
-    [nowISO, nowShort],
-    function(err) {
-      if (!err && this.changes > 0) {
-        writeLog('info', `[Auto-Publisher] Automatically published ${this.changes} scheduled articles!`);
+  db.all("SELECT id, status, scheduledAt, date FROM wc_articles WHERE status = 'Scheduled'", [], (err, rows) => {
+    if (err || !rows || rows.length === 0) return;
+    const now = Date.now();
+    const idsToPublish = [];
+    for (const art of rows) {
+      let schedTime = null;
+      if (art.scheduledAt) {
+        schedTime = new Date(art.scheduledAt).getTime();
+      } else if (art.date) {
+        schedTime = new Date(art.date).getTime();
+      }
+      if (schedTime && !isNaN(schedTime) && now >= schedTime) {
+        idsToPublish.push(art.id);
       }
     }
-  );
+    if (idsToPublish.length > 0) {
+      const placeholders = idsToPublish.map(() => '?').join(',');
+      db.run(
+        `UPDATE wc_articles 
+         SET status = 'Published',
+             date = CASE 
+               WHEN scheduledAt IS NOT NULL AND scheduledAt != '' THEN substr(scheduledAt, 1, 10) 
+               ELSE date 
+             END 
+         WHERE id IN (${placeholders})`,
+        idsToPublish,
+        function(updateErr) {
+          if (!updateErr && this.changes > 0) {
+            writeLog('info', `[Auto-Publisher] Automatically published ${this.changes} scheduled articles!`);
+          }
+        }
+      );
+    }
+  });
 }, 60000);
 
 // ----------------------------------------------------
@@ -578,7 +595,114 @@ app.get('/api/check-username/:username', (req, res) => {
   });
 });
 
+// 6. Technical SEO & Audit Endpoints (Sitemap XML động, LLMs.txt & Log Analysis)
+
+// Dynamic XML Sitemap Generator (Criterion 2)
+app.get(['/sitemap.xml', '/api/sitemap.xml'], (req, res) => {
+  const domain = 'https://review.totsystem.com';
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const staticPages = [
+    { url: `${domain}/`, priority: '1.0', changefreq: 'daily', lastmod: todayStr },
+    { url: `${domain}/deals`, priority: '0.8', changefreq: 'daily', lastmod: todayStr },
+    { url: `${domain}/about`, priority: '0.5', changefreq: 'monthly', lastmod: '2026-01-01' },
+    { url: `${domain}/our-team`, priority: '0.5', changefreq: 'monthly', lastmod: '2026-01-01' },
+    { url: `${domain}/staff-demographics`, priority: '0.5', changefreq: 'monthly', lastmod: '2026-01-01' },
+    { url: `${domain}/how-to-pitch`, priority: '0.5', changefreq: 'monthly', lastmod: '2026-01-01' },
+    { url: `${domain}/contact`, priority: '0.5', changefreq: 'monthly', lastmod: '2026-01-01' }
+  ];
+
+  db.all("SELECT id, name FROM wc_categories WHERE active = 1", [], (catErr, categories) => {
+    const categoryUrls = (categories || []).map(c => ({
+      url: `${domain}/category/${c.id}`,
+      priority: '0.8',
+      changefreq: 'weekly',
+      lastmod: todayStr
+    }));
+
+    db.all("SELECT id, slug, status, date, createdAt FROM wc_articles WHERE status = 'Published'", [], (artErr, articles) => {
+      const articleUrls = (articles || []).map(a => {
+        let lastmod = todayStr;
+        if (a.date) {
+          try { lastmod = new Date(a.date).toISOString().split('T')[0]; } catch(e) {}
+        }
+        return {
+          url: `${domain}/reviews/${a.slug || a.id}`,
+          priority: '0.9',
+          changefreq: 'daily',
+          lastmod
+        };
+      });
+
+      const allUrls = [...staticPages, ...categoryUrls, ...articleUrls];
+
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+      xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+      allUrls.forEach(item => {
+        xml += `  <url>\n`;
+        xml += `    <loc>${item.url}</loc>\n`;
+        xml += `    <lastmod>${item.lastmod}</lastmod>\n`;
+        xml += `    <changefreq>${item.changefreq}</changefreq>\n`;
+        xml += `    <priority>${item.priority}</priority>\n`;
+        xml += `  </url>\n`;
+      });
+      xml += `</urlset>\n`;
+
+      res.header('Content-Type', 'application/xml');
+      return res.send(xml);
+    });
+  });
+});
+
+// Serve llms.txt (Criterion 41)
+app.get('/llms.txt', (req, res) => {
+  const llmsPath = path.join(__dirname, '../public/llms.txt');
+  if (fs.existsSync(llmsPath)) {
+    res.header('Content-Type', 'text/plain; charset=utf-8');
+    return res.sendFile(llmsPath);
+  }
+  return res.status(404).send('# llms.txt not found');
+});
+
+// Crawler Bot Log File Analysis Endpoint (Criterion 39)
+app.get('/api/log-analysis', (req, res) => {
+  try {
+    const files = fs.readdirSync(logDir).filter(f => f.startsWith('server_') && f.endsWith('.log'));
+    let totalRequests = 0;
+    let googlebotHits = 0;
+    let bingbotHits = 0;
+    let otherBotHits = 0;
+
+    files.forEach(file => {
+      const content = fs.readFileSync(path.join(logDir, file), 'utf-8');
+      const lines = content.split('\n');
+      totalRequests += lines.length;
+      lines.forEach(line => {
+        const lower = line.toLowerCase();
+        if (lower.includes('googlebot')) googlebotHits++;
+        else if (lower.includes('bingbot')) bingbotHits++;
+        else if (lower.includes('bot') || lower.includes('crawler') || lower.includes('slurp')) otherBotHits++;
+      });
+    });
+
+    return res.json({
+      success: true,
+      logFilesCount: files.length,
+      totalLogEntries: totalRequests,
+      crawlerStats: {
+        googlebotHits,
+        bingbotHits,
+        otherBotHits,
+        lastAnalyzedAt: new Date().toISOString()
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Log analysis failed: ' + err.message });
+  }
+});
+
 // Start Server
 app.listen(PORT, '127.0.0.1', () => {
   writeLog('info', `ReviewSmart backend running on http://127.0.0.1:${PORT}`);
 });
+

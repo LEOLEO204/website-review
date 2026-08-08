@@ -216,7 +216,6 @@ export default function HomepageLayoutConfig({ onClose }) {
                   Article #{idx + 1}:
                 </label>
                 <select
-                  required
                   value={selectedId}
                   onChange={(e) => handleArticleChange(idx, e.target.value)}
                   className="flex-grow px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-800 bg-white transition cursor-pointer font-medium text-slate-800"
@@ -257,7 +256,6 @@ export default function HomepageLayoutConfig({ onClose }) {
                     <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Product Name</label>
                     <input
                       type="text"
-                      required
                       value={deal.name}
                       onChange={(e) => handleDealFieldChange(idx, 'name', e.target.value)}
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-slate-400"
@@ -270,7 +268,6 @@ export default function HomepageLayoutConfig({ onClose }) {
                     <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Affiliate link / Redirect link (Buy URL)</label>
                     <input
                       type="text"
-                      required
                       value={deal.buyUrl}
                       onChange={(e) => handleDealFieldChange(idx, 'buyUrl', e.target.value)}
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-slate-400 font-mono text-slate-600"
@@ -309,7 +306,6 @@ export default function HomepageLayoutConfig({ onClose }) {
                     <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Deal Price</label>
                     <input
                       type="text"
-                      required
                       value={deal.dealPrice}
                       onChange={(e) => handleDealFieldChange(idx, 'dealPrice', e.target.value)}
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-slate-400"

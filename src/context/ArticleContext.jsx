@@ -137,6 +137,7 @@ export const ArticleProvider = ({ children }) => {
       localStorage.setItem('review_articles', JSON.stringify(filtered));
       localStorage.setItem('wc_articles', JSON.stringify(filtered));
       db.invalidateCache();
+      syncArrayToSupabase('wc_articles', filtered);
       
       return filtered;
     });
@@ -162,6 +163,7 @@ export const ArticleProvider = ({ children }) => {
       localStorage.setItem('review_articles', JSON.stringify(filtered));
       localStorage.setItem('wc_articles', JSON.stringify(filtered));
       db.invalidateCache();
+      syncArrayToSupabase('wc_articles', filtered);
 
       return filtered;
     });

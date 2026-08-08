@@ -21,7 +21,8 @@ export const syncArrayToSupabase = async (table, localArray) => {
     return;
   }
   try {
-    if (!sessionStorage.getItem('wc_admin_session')) {
+    const hasAdminSession = localStorage.getItem('wc_admin_session') || sessionStorage.getItem('wc_admin_session');
+    if (!hasAdminSession) {
       return; // Silently skip for non-admin visitors
     }
   } catch (e) {
@@ -57,7 +58,8 @@ export const deleteRowInSupabase = async (table, id) => {
     return;
   }
   try {
-    if (!sessionStorage.getItem('wc_admin_session')) {
+    const hasAdminSession = localStorage.getItem('wc_admin_session') || sessionStorage.getItem('wc_admin_session');
+    if (!hasAdminSession) {
       return;
     }
   } catch (e) {

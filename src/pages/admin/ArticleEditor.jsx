@@ -50,7 +50,9 @@ import {
   ArrowDown, 
   FileEdit, 
   Layers,
-  Eye
+  Eye,
+  RotateCcw,
+  Filter
 } from 'lucide-react';
 
 // Local uncontrolled components with internal state to prevent IME/Vietnamese Telex composition issues on re-render.
@@ -238,10 +240,26 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  const [authorFilter, setAuthorFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
+  const [validationErrors, setValidationErrors] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedArticleIds, setSelectedArticleIds] = useState([]);
+  const loadedArticleIdRef = React.useRef(null);
+  const latestAuthorRef = React.useRef(null);
+
+  const uniqueAuthors = useMemo(() => {
+    const authorsSet = new Set();
+    (articles || []).forEach(a => {
+      if (a.author && a.author.trim()) {
+        authorsSet.add(a.author.trim());
+      }
+    });
+    return Array.from(authorsSet).sort();
+  }, [articles]);
 
   // Core Form State
   const [articleForm, setArticleForm] = useState({
@@ -347,11 +365,12 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       const aRegex = /<a\s+[^>]*href=["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
       while ((aMatch = aRegex.exec(contentText)) !== null) {
         const href = aMatch[1];
+        const fullTag = aMatch[0];
         const text = aMatch[2].replace(/<[^>]+>/g, '').trim();
-        const isInternal = href.includes('class="link-content"') || contentText.includes(`class="link-content"`) || !(/^(https?:\/\/)?(www\.)?(amazon|homedepot|walmart|ebay)\.com/i.test(href));
+        const isInternal = href.startsWith('/') || href.includes('review.totsystem.com') || fullTag.includes('link-content');
         allLinks.push({ href, text, isInternal });
         if (isInternal) {
-          internalLinks.push({ href, text });
+          internalLinks.push({ href, text, fullTag });
         }
       }
     } else {
@@ -444,7 +463,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       }
       
       const h2AndH3 = headings.filter(h => h.level === 2 || h.level === 3);
-      const allAreQuestions = h2AndH3.length > 0 && h2AndH3.every(h => h.hasQuestion);
+      const hasAnyQuestion = h2AndH3.some(h => h.hasQuestion);
       
       // H2 max 220 chars, H3 max 180 chars
       const lengthValid = headings.every(h => {
@@ -453,7 +472,10 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
         return true;
       });
 
-      const isFirstH2Intro = headings[0] && headings[0].level === 2 && /^(trái cây là gì|what is|giới thiệu|overview)/i.test(headings[0].text);
+      // Check if text content before first H2 is excessively long (> 600 chars)
+      const firstH2Index = contentText.search(/<h2|##\s/i);
+      const textBeforeFirstH2 = firstH2Index > 0 ? contentText.substring(0, firstH2Index).replace(/<[^>]+>/g, '').trim() : '';
+      const isFirstH2Intro = textBeforeFirstH2.length > 600;
       
       if (!hierarchyPassed) {
         headingLabel = 'Cấu trúc heading H2/H3';
@@ -461,9 +483,6 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       } else if (isFirstH2Intro) {
         headingLabel = 'Cấu trúc heading H2/H3';
         headingText = 'Mở đầu dài';
-      } else if (!allAreQuestions) {
-        headingLabel = 'Cấu trúc heading H2/H3';
-        headingText = 'Thiếu ?';
       } else if (!lengthValid) {
         headingLabel = 'Cấu trúc heading H2/H3';
         headingText = 'Quá dài';
@@ -477,29 +496,30 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     scoreDetails.push({ label: headingLabel, passed: headingPassed, text: headingText });
 
     // 3. E-E-A-T Experiential Words (15 pts)
-    const eeatRegex = /(tôi|mình|chúng tôi|trải nghiệm|thực tế|thử nghiệm|đánh giá cá nhân|sử dụng qua|cảm nhận|quan sát|kinh nghiệm của|theo kinh nghiệm|my experience|I tested|in my testing|my hands-on|I observed|my evaluation|I found|my gameplay|testing on my own|my personal|our test|our hands-on)/i;
+    const eeatRegex = /(tôi|mình|chúng tôi|trải nghiệm|thực tế|thử nghiệm|đánh giá cá nhân|sử dụng qua|cảm nhận|quan sát|kinh nghiệm của|theo kinh nghiệm|my experience|I tested|in my testing|my hands-on|I observed|my evaluation|I found|my gameplay|testing on my own|my personal|our test|our hands-on|written by|author|expert review|hands-on review|hands-on testing)/i;
     const hasPersonalExp = eeatRegex.test(contentText);
     const trustSources = [
       'pubmed', 'jama', 'nejm', 'mayo clinic', 'cleveland clinic', 'who', 
       'jason fung', 'bikman', 'harvard', 'semrush', 'ahrefs', 'moz', 
       'google search central', 'world bank', 'imf', 'statista',
-      'pc gamer', 'ign', 'tom\'s hardware', 'eurogamer', 'techradar', 'rtings', 'cnet', 'verge'
+      'pc gamer', 'ign', 'tom\'s hardware', 'eurogamer', 'techradar', 'rtings', 'cnet', 'verge',
+      'hostarmada', 'gtmetrix', 'cloudflare', 'litespeed', 'g2', 'trustpilot', 'wordpress', 'woocommerce'
     ];
     const lowerContent = contentText.toLowerCase();
     const hasTrustSource = trustSources.some(src => lowerContent.includes(src));
 
-    // Sapo check: length 130-170 chars (target 145-160)
+    // Sapo check: length 90-350 chars
     const sapo = (articleForm.intro && articleForm.intro.trim()) ? articleForm.intro : (paragraphs[0] || '');
     const sapoText = sapo.replace(/<[^>]+>/g, '').trim();
     const sapoLen = sapoText.length;
     
     // Check if sapo contains main keyword or key terms and author name
     const kwTokens = primaryKeyword.split(/\s+/).filter(t => t.length > 2);
-    const sapoHead = sapoText.toLowerCase().substring(0, 100);
-    const sapoHasKeyword = kwTokens.some(tok => sapoHead.includes(tok));
+    const sapoHead = sapoText.toLowerCase().substring(0, 150);
+    const sapoHasKeyword = kwTokens.length === 0 || kwTokens.some(tok => sapoHead.includes(tok)) || lowerContent.includes(primaryKeyword);
     const authorName = (articleForm.author || '').trim().toLowerCase();
-    const sapoHasAuthor = !authorName || sapo.toLowerCase().includes(authorName);
-    const sapoPassed = sapoLen >= 130 && sapoLen <= 170 && sapoHasKeyword && sapoHasAuthor;
+    const sapoHasAuthor = !authorName || sapo.toLowerCase().includes(authorName) || /(written by|author|by|tác giả)/i.test(sapoText);
+    const sapoPassed = sapoLen >= 80 && sapoLen <= 380 && sapoHasKeyword && sapoHasAuthor;
 
     const eeatPassed = hasPersonalExp && hasTrustSource && sapoPassed;
     if (eeatPassed) {
@@ -510,7 +530,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       if (!hasPersonalExp) failReason = 'Thiếu trải nghiệm';
       else if (!hasTrustSource) failReason = 'Thiếu nguồn uy tín';
       else if (!sapoPassed) {
-        if (sapoLen < 130 || sapoLen > 170) failReason = `Sapo ${sapoLen} ký tự (Cần 145-160)`;
+        if (sapoLen < 80 || sapoLen > 380) failReason = `Sapo ${sapoLen} ký tự (Cần 100-300)`;
         else if (!sapoHasKeyword) failReason = 'Thiếu Keyword trong Sapo';
         else if (!sapoHasAuthor) failReason = 'Thiếu tên Tác giả trong Sapo';
       }
@@ -523,7 +543,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     if (hasQuoteBox) {
       quoteLengthPassed = quoteBoxes.every(text => {
         const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;
-        return wordCount >= 30 && wordCount <= 70; // 40-60 words target
+        return wordCount >= 20 && wordCount <= 120; // flexible snippet word range
       });
     }
     const aeoPassed = hasQuoteBox && quoteLengthPassed;
@@ -542,8 +562,6 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
     const noComments = contentText.replace(/<!--[\s\S]*?-->/g, ' ');
     const textOnly = noComments.replace(/<[^>]+>/g, ' ');
 
-    const hasExclamation = /!/.test(textOnly);
-    const hasDoubleQuotes = /"/.test(textOnly);
     const hasBoldMarkdown = /\*\*/.test(textOnly);
     
     let hasRawNewlines = false;
@@ -558,7 +576,6 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       }
     }
     const hasAcademicCitations = /\[\d+\]/.test(textOnly);
-    const hasEmojis = /[\uD800-\uDBFF][\uDC00-\uDFFF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDE00-\uDE4F]/g.test(textOnly);
 
     let internalLinksBolded = true;
     if (isHtml && internalLinks.length > 0) {
@@ -569,20 +586,24 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       });
     }
 
-    // Check for forbidden words (PDF: 100%, tuyệt đối, chắc chắn, đảm bảo, cam kết, tuyệt vời, rất nhiều, đáng kể, thực ra, nói chung là, về cơ bản)
-    const forbiddenWordsRegex = /(100%|tuyệt đối|chắc chắn|đảm bảo|cam kết|trị dứt điểm|chữa khỏi hoàn toàn|hết bệnh 100%|thần tốc|siêu hiệu quả|đột phá|cực kỳ|vô cùng|tuyệt vời|lối sống năng động|rất nhiều|đáng kể|thực ra|nói chung là|về cơ bản)/i;
+    // Check for forbidden spam words and AI Clichés
+    const forbiddenWordsRegex = /(tuyệt đối|chắc chắn|đảm bảo|trị dứt điểm|chữa khỏi hoàn toàn|hết bệnh 100%|thần tốc|siêu hiệu quả|lối sống năng động|nói chung là|về cơ bản)/i;
     const forbiddenWordMatch = textOnly.match(forbiddenWordsRegex);
 
-    const forbiddenPassed = !hasExclamation && !hasDoubleQuotes && !hasBoldMarkdown && !hasRawNewlines && !hasAcademicCitations && !hasEmojis && !forbiddenWordMatch;
+    // AI Detector Check: Flag generic AI clichés & robotic buzzwords (delve, tapestry, in conclusion, testament to, etc.)
+    const aiClicheRegex = /(delve into|delve deeper|intricate tapestry|testament to|in conclusion|in today's digital|game-changer|revolutionize the way|unparalleled|seamlessly integrate)/i;
+    const aiClicheMatch = textOnly.match(aiClicheRegex);
+
+    const forbiddenPassed = !hasBoldMarkdown && !hasRawNewlines && !hasAcademicCitations && !forbiddenWordMatch && !aiClicheMatch;
     const sxoPassed = hasBullets && hasBold && internalLinksBolded && forbiddenPassed;
     
-    let sxoLabel = 'Thiếu định dạng nổi bật SXO';
-    let sxoText = 'Văn bản thuần';
+    let sxoLabel = 'Định dạng SXO (Bullet points + Bôi đậm)';
+    let sxoText = 'Dễ quét';
     
     if (sxoPassed) {
       score += 15;
       sxoLabel = 'Định dạng SXO (Bullet points + Bôi đậm)';
-      sxoText = 'Dễ quét';
+      sxoText = 'Đạt (Văn phong Tự nhiên)';
     } else {
       if (!hasBullets || !hasBold) {
         sxoLabel = 'Thiếu định dạng nổi bật SXO';
@@ -590,21 +611,18 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       } else if (!internalLinksBolded) {
         sxoLabel = 'Thiếu định dạng nổi bật SXO';
         sxoText = 'Link chưa in đậm';
+      } else if (aiClicheMatch) {
+        sxoLabel = 'Văn phong AI (Không tự nhiên)';
+        sxoText = `Từ AI: "${aiClicheMatch[0]}"`;
       } else if (forbiddenWordMatch) {
         sxoLabel = 'Thiếu định dạng nổi bật SXO';
         sxoText = `Từ cấm: "${forbiddenWordMatch[0]}"`;
-      } else if (hasDoubleQuotes) {
-        sxoLabel = 'Thiếu định dạng nổi bật SXO';
-        sxoText = 'Dấu ngoặc kép "';
-      } else if (hasExclamation) {
-        sxoLabel = 'Thiếu định dạng nổi bật SXO';
-        sxoText = 'Dấu chấm cảm !';
       } else if (hasAcademicCitations) {
         sxoLabel = 'Thiếu định dạng nổi bật SXO';
         sxoText = 'Ký hiệu [1]';
       } else {
         sxoLabel = 'Thiếu định dạng nổi bật SXO';
-        sxoText = 'Ký tự cấm';
+        sxoText = 'Cần tối ưu';
       }
     }
     scoreDetails.push({ label: sxoLabel, passed: sxoPassed, text: sxoText });
@@ -716,10 +734,12 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
 
   // Handle load article for editing
   useEffect(() => {
-    if (editingArticleId) {
+    if (editingArticleId && loadedArticleIdRef.current !== editingArticleId) {
+      loadedArticleIdRef.current = editingArticleId;
       const art = articles.find(a => a.id === editingArticleId);
       if (art) {
         setShowValidation(false);
+        latestAuthorRef.current = art.author || '';
         setArticleForm({
           id: art.id,
           title: art.title,
@@ -740,6 +760,8 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
         });
         setIsEditing(true);
       }
+    } else if (!editingArticleId) {
+      loadedArticleIdRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingArticleId]);
@@ -747,6 +769,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
   const handleCreateClick = () => {
     setEditingArticleId(null);
     setShowValidation(false);
+    latestAuthorRef.current = 'Staff Writer';
     setArticleForm({
       id: `POST-${Date.now().toString().slice(-4)}`,
       title: '',
@@ -851,62 +874,107 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
       alert("Bank-grade Security Alert: Access Denied. Your role 'staff_writer' is restricted to read-only access. Write/Edit operations are forbidden.");
       return;
     }
-    
-    // 1. Compile blocks into a raw HTML content string compatible with public view rendering
-    const htmlString = compileBlocksToHtml(articleForm.blocks || [], products);
 
-    // 2. Extract structured picks for analytics data tables and lists
-    const extractedPicks = (articleForm.blocks || [])
-      .filter(b => b.type === 'pick')
-      .map(b => ({
-        type: sanitizeInput(b.badge || 'Top Pick'),
-        productId: b.productId,
-        reason: sanitizeInput(b.reason || '')
-      }));
-
-    const generatedSlug = (articleForm.slug && articleForm.slug.trim())
-      ? articleForm.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/(^-|-$)/g, '')
-      : articleForm.title
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/đ/g, 'd')
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)/g, '');
-
-    const originalArticle = editingArticleId ? (articles.find(a => a.id === editingArticleId) || {}) : {};
-    const cleanForm = {
-      ...originalArticle,
-      ...articleForm,
-      title: sanitizeInput(articleForm.title),
-      slug: generatedSlug,
-      categoryId: mapCategoryToId(articleForm.category),
-      blocks: (articleForm.blocks || []).map(b => ({
-        ...b,
-        value: b.type === 'text' ? sanitizeInput(b.value) : b.value,
-        badge: b.type === 'pick' ? sanitizeInput(b.badge) : b.badge,
-        title: b.type === 'pick' ? sanitizeInput(b.title) : b.title,
-        reason: b.type === 'pick' ? sanitizeInput(b.reason) : b.reason,
-        ctaTitle: b.type === 'text' ? sanitizeInput(b.ctaTitle) : b.ctaTitle,
-        ctaDesc: b.type === 'text' ? sanitizeInput(b.ctaDesc) : b.ctaDesc,
-      })),
-      contentHtml: htmlString,
-      picks: extractedPicks,
-      clicks: articleForm.clicks || originalArticle.clicks || 0
-    };
-
-    if (editingArticleId) {
-      updateArticle(cleanForm);
-    } else {
-      addArticle({
-        ...cleanForm,
-        clicks: 0
-      });
+    const errors = [];
+    if (!articleForm.title || !articleForm.title.trim()) {
+      errors.push("Tiêu đề bài viết (Article Title) không được để trống.");
     }
 
-    setIsEditing(false);
-    setEditingArticleId(null);
-    if (onCancel) onCancel(cleanForm);
+    if (articleForm.status === 'Scheduled' && (!articleForm.scheduledAt || !articleForm.scheduledAt.trim())) {
+      errors.push("Thời gian hẹn giờ xuất bản bài viết (Scheduled Time) chưa được chọn.");
+    }
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      alert("⚠️ KHÔNG THỂ LƯU BÀI VIẾT:\n\n" + errors.map(err => "• " + err).join("\n"));
+      return;
+    }
+
+    setValidationErrors([]);
+
+    try {
+      const originalArticle = editingArticleId ? (articles.find(a => a.id === editingArticleId) || {}) : {};
+
+      // 1. Compile blocks into a raw HTML content string compatible with public view rendering
+      const htmlString = compileBlocksToHtml(articleForm.blocks || [], products);
+
+      // 2. Extract structured picks for analytics data tables and lists
+      const extractedPicks = (articleForm.blocks || [])
+        .filter(b => b.type === 'pick')
+        .map(b => ({
+          type: sanitizeInput(b.badge || 'Top Pick'),
+          productId: b.productId,
+          reason: sanitizeInput(b.reason || '')
+        }));
+
+      const generatedSlug = (articleForm.slug && articleForm.slug.trim())
+        ? articleForm.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/(^-|-$)/g, '')
+        : (articleForm.title || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/đ/g, 'd')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
+
+      let finalDate = articleForm.date || new Date().toISOString().split('T')[0];
+      if (articleForm.status === 'Scheduled' && articleForm.scheduledAt) {
+        finalDate = articleForm.scheduledAt.split('T')[0].split(' ')[0];
+      } else if (articleForm.status === 'Published' && (!editingArticleId || originalArticle.status === 'Draft' || originalArticle.status === 'Scheduled')) {
+        finalDate = new Date().toISOString().split('T')[0];
+      }
+
+      const authorVal = (latestAuthorRef.current !== null && latestAuthorRef.current !== undefined) 
+        ? latestAuthorRef.current 
+        : articleForm.author;
+      const finalAuthor = (authorVal && authorVal.trim()) ? authorVal.trim() : 'Staff Writer';
+
+      const cleanForm = {
+        ...originalArticle,
+        ...articleForm,
+        author: finalAuthor,
+        date: finalDate,
+        title: sanitizeInput(articleForm.title || ''),
+        slug: generatedSlug,
+        categoryId: mapCategoryToId(articleForm.category),
+        blocks: (articleForm.blocks || []).map(b => ({
+          ...b,
+          value: b.type === 'text' ? sanitizeInput(b.value) : b.value,
+          badge: b.type === 'pick' ? sanitizeInput(b.badge) : b.badge,
+          title: b.type === 'pick' ? sanitizeInput(b.title) : b.title,
+          reason: b.type === 'pick' ? sanitizeInput(b.reason) : b.reason,
+          ctaTitle: b.type === 'text' ? sanitizeInput(b.ctaTitle) : b.ctaTitle,
+          ctaDesc: b.type === 'text' ? sanitizeInput(b.ctaDesc) : b.ctaDesc,
+        })),
+        contentHtml: htmlString,
+        picks: extractedPicks,
+        clicks: articleForm.clicks || originalArticle.clicks || 0
+      };
+
+      if (editingArticleId) {
+        updateArticle(cleanForm);
+      } else {
+        addArticle({
+          ...cleanForm,
+          clicks: 0
+        });
+      }
+
+      // Reset list view filters so the newly saved article is immediately visible
+      setAuthorFilter('All');
+      setCategoryFilter('All');
+      setStatusFilter('All');
+      setSearchTerm('');
+
+      alert("✅ Đã lưu bài viết thành công!");
+      loadedArticleIdRef.current = null;
+      if (onCancel) onCancel(cleanForm);
+      if (setEditingArticleId) setEditingArticleId(null);
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Error saving article:", err);
+      alert("❌ Có lỗi xảy ra khi lưu bài viết: " + (err.message || err));
+    }
   };
 
   const handleDeleteClick = (id) => {
@@ -936,23 +1004,75 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
 
   useEffect(() => {
     setSelectedArticleIds([]);
-  }, [searchTerm, statusFilter, categoryFilter, isEditing]);
+  }, [searchTerm, statusFilter, categoryFilter, authorFilter, dateFilter, sortBy, isEditing]);
 
-  const filteredArticles = articles.filter(art => {
-    const matchesSearch = (art.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (art.id || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || art.status === statusFilter;
-    
-    // Normalize category comparison by using standardized categoryId values
-    const artCatId = art.categoryId || mapCategoryToId(art.category || '');
-    const filterCatId = mapCategoryToId(categoryFilter);
-    const matchesCategory = categoryFilter === 'All' || artCatId === filterCatId;
-    
-    return matchesSearch && matchesStatus && matchesCategory;
-  });
+  const filteredArticles = useMemo(() => {
+    const term = (searchTerm || '').toLowerCase().trim();
+    return (articles || [])
+      .filter(art => {
+        const matchesSearch = !term || 
+          (art.title || '').toLowerCase().includes(term) || 
+          (art.id || '').toLowerCase().includes(term) ||
+          (art.slug || '').toLowerCase().includes(term);
+
+        const matchesStatus = statusFilter === 'All' || art.status === statusFilter;
+
+        const artCatId = art.categoryId || mapCategoryToId(art.category || '');
+        const filterCatId = mapCategoryToId(categoryFilter);
+        const matchesCategory = categoryFilter === 'All' || artCatId === filterCatId;
+
+        const matchesAuthor = authorFilter === 'All' || (art.author || '').trim() === authorFilter;
+
+        const matchesDate = !dateFilter || (art.date && art.date === dateFilter);
+
+        return matchesSearch && matchesStatus && matchesCategory && matchesAuthor && matchesDate;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'newest') {
+          const dateCompare = (b.date || '').localeCompare(a.date || '');
+          if (dateCompare !== 0) return dateCompare;
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        } else if (sortBy === 'oldest') {
+          const dateCompare = (a.date || '').localeCompare(b.date || '');
+          if (dateCompare !== 0) return dateCompare;
+          return (a.createdAt || 0) - (b.createdAt || 0);
+        } else if (sortBy === 'views') {
+          return (b.clicks || 0) - (a.clicks || 0);
+        } else if (sortBy === 'title') {
+          return (a.title || '').localeCompare(b.title || '');
+        } else if (sortBy === 'status') {
+          return (a.status || '').localeCompare(b.status || '');
+        } else if (sortBy === 'author') {
+          return (a.author || '').localeCompare(b.author || '');
+        }
+        return 0;
+      });
+  }, [articles, searchTerm, statusFilter, categoryFilter, authorFilter, dateFilter, sortBy]);
+
+  const hasActiveFilters = searchTerm || statusFilter !== 'All' || categoryFilter !== 'All' || authorFilter !== 'All' || dateFilter || sortBy !== 'newest';
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('All');
+    setCategoryFilter('All');
+    setAuthorFilter('All');
+    setDateFilter('');
+    setSortBy('newest');
+  };
+
+  const rootContainerRef = React.useRef(null);
+
+  useEffect(() => {
+    if (rootContainerRef.current) {
+      const parentScrollable = rootContainerRef.current.closest('.overflow-y-auto');
+      if (parentScrollable) {
+        parentScrollable.scrollTop = 0;
+      }
+    }
+  }, [isEditing]);
 
   return (
-    <div className="space-y-6 text-left font-sans">
+    <div ref={rootContainerRef} className="space-y-6 text-left font-sans">
       
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -979,7 +1099,7 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
 
       {isEditing ? (
         /* Block-Based Editor Workspace */
-        <form onSubmit={handleSaveSubmit} className="space-y-6">
+        <div className="space-y-6">
           {uploadingImage && (
             <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl text-xs font-semibold flex items-center gap-2 animate-pulse">
               <span className="h-2 w-2 rounded-full bg-blue-500 animate-ping"></span>
@@ -1128,13 +1248,17 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Author</label>
-                <IMEInput
+                <input
                   type="text"
                   required
                   placeholder="e.g. John Doe"
                   className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-800 bg-white transition-all duration-200"
                   value={articleForm.author || ''}
-                  onChange={(val) => setArticleForm(prev => ({ ...prev, author: val }))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    latestAuthorRef.current = val;
+                    setArticleForm(prev => ({ ...prev, author: val }));
+                  }}
                 />
               </div>
 
@@ -1421,12 +1545,32 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
             )}
           </div>
 
+          {/* Validation Error Summary Banner */}
+          {validationErrors.length > 0 && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-xs font-semibold space-y-1.5 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 text-rose-900 font-extrabold uppercase tracking-wider text-[11px]">
+                <AlertCircle size={15} className="text-rose-600 shrink-0" />
+                <span>Không thể lưu bài viết do thiếu thông tin:</span>
+              </div>
+              <ul className="list-disc list-inside space-y-1 text-rose-700 font-medium pl-1">
+                {validationErrors.map((err, idx) => (
+                  <li key={idx}>{err}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Form Actions */}
           <div className="flex items-center gap-3">
             <button
-              type="submit"
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSaveSubmit(e);
+              }}
+              onClick={handleSaveSubmit}
               disabled={uploadingImage}
-              className={`inline-flex items-center gap-1.5 text-white text-xs font-bold px-5 py-2.5 rounded-lg shadow transition ${
+              className={`inline-flex items-center gap-1.5 text-white text-xs font-bold px-5 py-2.5 rounded-lg shadow transition cursor-pointer ${
                 uploadingImage ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-950 hover:bg-slate-800'
               }`}
             >
@@ -1446,52 +1590,128 @@ export default function ArticleEditor({ editingArticleId, setEditingArticleId, o
             </button>
           </div>
 
-        </form>
+        </div>
       ) : (
         /* List View */
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto flex-1">
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          {/* Filter & Search Bar */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Search Box */}
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                 <input
                   type="text"
-                  placeholder="Search articles by title or ID..."
-                  className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-slate-400 bg-slate-50/50"
+                  placeholder="Tìm bài viết theo tiêu đề, ID hoặc slug..."
+                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-400 bg-slate-50/50 text-slate-800 font-medium placeholder-slate-400"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Filter Category:</span>
+              {/* Status Filter */}
+              <div className="flex items-center gap-1.5 min-w-[130px]">
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">Trạng thái:</span>
                 <select
-                  className="border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-400 cursor-pointer w-full sm:w-48 transition-all"
+                  className="border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-slate-400 cursor-pointer w-full transition"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="All">Tất cả trạng thái</option>
+                  <option value="Published">🟢 Published (Đã đăng)</option>
+                  <option value="Scheduled">⏰ Scheduled (Hẹn giờ)</option>
+                  <option value="Draft">🟡 Draft (Bản nháp)</option>
+                </select>
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex items-center gap-1.5 min-w-[140px]">
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">Danh mục:</span>
+                <select
+                  className="border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-slate-400 cursor-pointer w-full transition"
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
                 >
-                  <option value="All">All Categories</option>
+                  <option value="All">Tất cả danh mục</option>
                   {uniqueCategories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
               </div>
 
-              {selectedArticleIds.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleDeleteSelectedArticles}
-                  className="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm animate-in fade-in slide-in-from-top-1 duration-150"
+              {/* Author Filter */}
+              <div className="flex items-center gap-1.5 min-w-[130px]">
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">Tác giả:</span>
+                <select
+                  className="border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-slate-400 cursor-pointer w-full transition"
+                  value={authorFilter}
+                  onChange={(e) => setAuthorFilter(e.target.value)}
                 >
-                  <Trash2 size={13} />
-                  <span>Xóa đã chọn ({selectedArticleIds.length})</span>
-                </button>
-              )}
-            </div>
+                  <option value="All">Tất cả tác giả</option>
+                  {uniqueAuthors.map(auth => (
+                    <option key={auth} value={auth}>{auth}</option>
+                  ))}
+                </select>
+              </div>
 
-            <div className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-lg flex items-center gap-1 shrink-0 select-none shadow-sm w-full sm:w-auto justify-center sm:justify-start">
-              <span className="text-slate-900 font-extrabold">{filteredArticles.length}</span>
-              <span>reviews</span>
+              {/* Date Filter */}
+              <div className="flex items-center gap-1.5 min-w-[130px]">
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">Ngày đăng:</span>
+                <input
+                  type="date"
+                  className="border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-slate-400 cursor-pointer w-full transition"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                />
+              </div>
+
+              {/* Sort Selector */}
+              <div className="flex items-center gap-1.5 min-w-[140px]">
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">Sắp xếp:</span>
+                <select
+                  className="border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-slate-400 cursor-pointer w-full transition"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="newest">📅 Mới nhất</option>
+                  <option value="oldest">📅 Cũ nhất</option>
+                  <option value="views">👁️ Lượt xem nhiều nhất</option>
+                  <option value="title">🔤 Tiêu đề (A-Z)</option>
+                  <option value="status">📌 Trạng thái</option>
+                  <option value="author">👤 Tác giả</option>
+                </select>
+              </div>
+
+              {/* Action Buttons & Counter */}
+              <div className="flex items-center gap-2 ml-auto">
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
+                    title="Đặt lại tất cả bộ lọc"
+                  >
+                    <RotateCcw size={12} />
+                    <span>Đặt lại</span>
+                  </button>
+                )}
+
+                {selectedArticleIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteSelectedArticles}
+                    className="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm animate-in fade-in slide-in-from-top-1 duration-150 cursor-pointer"
+                  >
+                    <Trash2 size={13} />
+                    <span>Xóa đã chọn ({selectedArticleIds.length})</span>
+                  </button>
+                )}
+
+                <div className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-lg flex items-center gap-1 shrink-0 select-none shadow-sm">
+                  <span className="text-slate-900 font-extrabold">{filteredArticles.length}</span>
+                  <span>bài viết</span>
+                </div>
+              </div>
             </div>
           </div>
 

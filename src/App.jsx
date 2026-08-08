@@ -14,6 +14,9 @@ import ArticleDetailPage from './pages/ArticleDetailPage';
 import DealsPage from './components/deals/DealsPage';
 import AdminPanel from './components/admin/AdminPanel';
 import InfoPage from './pages/InfoPage';
+import NotFoundPage from './pages/NotFoundPage';
+
+import { setSEOHead } from './utils/seo';
 
 // Admin CMS Components
 import AdminSidebar from './components/admin/AdminSidebar';
@@ -27,6 +30,14 @@ import { ArticleProvider } from './context/ArticleContext';
 
 // Clean Modal Wrapper for Admin Overlays
 function AdminModalWrapper({ title, children, onClose }) {
+  const modalBodyRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (modalBodyRef.current) {
+      modalBodyRef.current.scrollTop = 0;
+    }
+  }, [title]);
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl border border-slate-200/80 flex flex-col animate-in fade-in zoom-in-95 duration-200">
@@ -41,7 +52,7 @@ function AdminModalWrapper({ title, children, onClose }) {
           </button>
         </div>
         {/* Modal Scrollable Body */}
-        <div className="p-6 overflow-y-auto flex-1 bg-white">
+        <div ref={modalBodyRef} className="p-6 overflow-y-auto flex-1 bg-white">
           {children}
         </div>
       </div>
@@ -69,10 +80,20 @@ function AppContent() {
   const isAdminPath = location.pathname.startsWith('/admin');
   const lastPathname = useRef(location.pathname);
 
-  // Sync session active state
+  // Sync session active state & dynamic SEO Head tags
   useEffect(() => {
     setIsAdminActive(sessionStorage.getItem('wc_admin_session') !== null);
     db.init();
+
+    // Set Dynamic Canonical and Meta Robots
+    const isNoIndexRoute = location.pathname.startsWith('/admin') || searchQuery.trim().length > 0;
+    const cleanPath = location.pathname.replace(/^\/admin/, '') || '/';
+    const canonicalUrl = `https://review.totsystem.com${cleanPath}`;
+
+    setSEOHead({
+      canonicalUrl,
+      noindex: isNoIndexRoute
+    });
 
     // Reset search query on normal page navigation and scroll to top
     if (location.pathname !== lastPathname.current) {
@@ -85,7 +106,7 @@ function AppContent() {
       }
       lastPathname.current = location.pathname;
     }
-  }, [location]);
+  }, [location, searchQuery]);
 
   // Global click interceptor to stay under /admin while in admin mode
   useEffect(() => {
@@ -194,6 +215,9 @@ function AppContent() {
             <Route path="/admin/staff-demographics" element={<InfoPage />} />
             <Route path="/admin/how-to-pitch" element={<InfoPage />} />
             <Route path="/admin/contact" element={<InfoPage />} />
+
+            {/* Fallback 404 Catch-All Route */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </div>
 

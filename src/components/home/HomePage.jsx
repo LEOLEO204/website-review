@@ -185,16 +185,18 @@ export default function HomePage({ triggerAffiliate, searchQuery }) {
     // Find right column daily deals products
     let dailyDealsProducts = [];
     if (config.dailyDeals && Array.isArray(config.dailyDeals)) {
-      dailyDealsProducts = config.dailyDeals.map(d => ({
-        id: `deal-${d.name}`,
-        name: d.name || '',
-        merchant: d.merchant || 'Amazon',
-        price: d.price || '',
-        dealPrice: d.dealPrice || '',
-        discount: d.discount || '',
-        buyUrl: d.buyUrl || '',
-        imageUrl: d.imageUrl || ''
-      }));
+      dailyDealsProducts = config.dailyDeals
+        .filter(d => d && d.name && d.name.trim() !== '')
+        .map(d => ({
+          id: `deal-${d.name}`,
+          name: d.name || '',
+          merchant: d.merchant || 'Amazon',
+          price: d.price || '',
+          dealPrice: d.dealPrice || '',
+          discount: d.discount || '',
+          buyUrl: d.buyUrl || '',
+          imageUrl: d.imageUrl || ''
+        }));
     } else if (config.dailyDealsProductIds && config.dailyDealsProductIds.length > 0) {
       dailyDealsProducts = config.dailyDealsProductIds
         .map(id => {

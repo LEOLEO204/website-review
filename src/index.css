@@ -17,6 +17,11 @@
 }
 
 @layer base {
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
   body {
     @apply bg-reviewsmart-bgWhite text-reviewsmart-text font-sans antialiased;
   }

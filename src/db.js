@@ -1334,6 +1334,23 @@ export const db = {
         art.intro = '';
         itemChanged = true;
       }
+      if (art.scheduledAt) {
+        const schedDatePart = art.scheduledAt.split('T')[0].split(' ')[0];
+        if (schedDatePart && schedDatePart.length === 10 && art.date !== schedDatePart) {
+          art.date = schedDatePart;
+          itemChanged = true;
+        }
+      }
+      if (art.status === 'Scheduled') {
+        const schedTime = art.scheduledAt ? new Date(art.scheduledAt).getTime() : (art.date ? new Date(art.date).getTime() : null);
+        if (schedTime && !isNaN(schedTime) && Date.now() >= schedTime) {
+          art.status = 'Published';
+          if (art.scheduledAt) {
+            art.date = art.scheduledAt.split('T')[0].split(' ')[0];
+          }
+          itemChanged = true;
+        }
+      }
       if (itemChanged) listChanged = true;
       return art;
     });
